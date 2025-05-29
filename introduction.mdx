@@ -1,0 +1,81 @@
+---
+title: "API Overview"
+description: "Authentication, rate limits and conventions for Mosaic's REST API."
+---
+
+## Overview
+
+Mosaic's REST API allows you to kick off professional-grade video editing workflows ("Agents") entirely from code. An agent is a pre-built graph of AI and rendering nodes that can do anything from audio enhancement to animated captions – you supply a video and optional parameters, Mosaic returns a polished result.
+
+### Typical flow
+
+1. **Upload a video** – Get a signed URL and PUT the bytes (`/video/get-upload-url`, `/video/finalize-upload`).
+2. **Run an agent** – Call `/run-agent` with the `file_id` you just created.
+3. **Track progress** – Poll `/get-agent-run-simple/{id}` or subscribe to a webhook.
+4. **Download outputs** – Fetch signed URLs via `/get-agent-run-outputs/{id}`.
+
+Grab the full walk-through in the [Quickstart](/quickstart).
+
+## Authentication
+
+Mosaic supports two flavours of authentication:
+
+### 1. API Keys (Production traffic)
+
+Use an API key **prefixed `mk_`** for all operational endpoints (`/run-agent`, polling status, downloading outputs etc.).
+
+```bash
+# Bearer header
+curl -H "Authorization: Bearer mk_your_key" \
+     -H "Content-Type: application/json" \
+     https://api.usemosaic.ai/api/run-agent
+
+# X-API-Key header (alternative)
+curl -H "X-API-Key: mk_your_key" \
+     -H "Content-Type: application/json" \
+     https://api.usemosaic.ai/api/run-agent
+```
+
+### 2. Session Tokens (Developer Portal)
+
+When you log in to the Mosaic dashboard you receive a short-lived JWT issued by Supabase. Use this to manage API keys and check your credit balance under the `/api/dev` namespace.
+
+## Rate Limiting & Quotas
+
+| Plan | Concurrent Runs | Upload Size | Free Credits |
+| --- | --- | --- | --- |
+| Free | 10 | 1 GiB | 300 |
+| Pro | 25 | 5 GiB | 5 000 |
+| Enterprise | custom | custom | custom |
+
+*Additional* request-per-minute limits only apply to developer-portal endpoints.
+
+## Error Handling
+
+Responses use conventional HTTP status codes. On errors the body contains a machine-readable `error` field plus a human friendly `detail`.
+
+```json
+{
+  "detail": "Too many concurrent runs",
+  "error": "concurrent_agent_limit"
+}
+```
+
+| Status | Error Code | Typical Cause |
+| --- | --- | --- |
+| 400 | validation_error | Malformed JSON or missing field |
+| 401 | invalid_api_key | Key revoked / wrong value |
+| 403 | concurrent_agent_limit | > 10 running agents (Free plan) |
+| 403 | insufficient_credits | Balance too low |
+| 404 | not_found | Unknown ID |
+| 422 | parameter_out_of_range | Field outside validation bounds |
+| 429 | rate_limit | > 120 requests / min to `/api/dev/*` |
+| 500 | internal_server_error | Unexpected exception |
+
+## Base URL
+
+```text
+https://api.usemosaic.ai/api
+```
+
+All endpoints are versioned implicitly. Breaking changes are announced 30 days in advance through the dashboard and a `platform.change` webhook.

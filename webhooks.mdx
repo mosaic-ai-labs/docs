@@ -1,0 +1,66 @@
+---
+title: "Webhooks"
+description: "Receive real-time notifications when an agent run completes or fails."
+---
+
+Configure a webhook URL on any API key (via the dashboard or `/dev/keys` endpoints) and Mosaic will POST a JSON payload every time a run finishes.
+
+Mosaic signs each request so you can verify authenticity.
+
+---
+
+## Signature Scheme
+
+```text
+X-Mosaic-Signature: t=1716912345,v1=af319…sha256
+```
+
+The header contains a Unix timestamp (`t`) and a HMAC-SHA256 signature (`v1`). Compute the digest locally and compare using constant-time equality.
+
+```python
+import hmac, hashlib, time
+
+secret = b"mk_your_api_key"  # yes, the same key value
+stamp  = header_ts  # integer
+msg    = f"{stamp}.".encode() + payload_bytes
+expected = hmac.new(secret, msg, hashlib.sha256).hexdigest()
+```
+
+Reject the request if
+1. The computed signature does not match.
+2. The timestamp is more than 5 minutes from current time.
+
+---
+
+## Events
+
+### agent_run.completed
+
+```json
+{
+  "event": "agent_run.completed",
+  "agent_run_id": "run_uuid",
+  "status": "success",
+  "outputs": [
+    {
+      "node_id": "node_uuid",
+      "file_id": "file_uuid",
+      "download_url": "https://signed-url",
+      "thumbnail_url": "https://signed-url"
+    }
+  ]
+}
+```
+
+### agent_run.failed
+
+```json
+{
+  "event": "agent_run.failed",
+  "agent_run_id": "run_uuid",
+  "status": "failed",
+  "error_message": "Error description"
+}
+```
+
+> **Retry policy**: Mosaic retries failed deliveries up to 5 times with exponential back-off (1 → 16 minutes). 

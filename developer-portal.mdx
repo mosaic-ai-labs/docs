@@ -1,0 +1,61 @@
+---
+title: "Developer Portal APIs"
+description: "Manage API keys and view your credit balance via session-authenticated endpoints."
+---
+
+<Alert type="info">These endpoints require a Supabase session token obtained by logging in to the Mosaic dashboard – **API keys do not work here.**</Alert>
+
+---
+
+## GET /dev/keys
+
+List all API keys for the authenticated user.
+
+```json
+{
+  "keys": [
+    {
+      "id": "key_uuid",
+      "created_at": "2024-01-01T00:00:00Z",
+      "last_used_at": "2024-01-02T12:34:56Z",
+      "webhook_url": "https://example.com/webhook"
+    }
+  ]
+}
+```
+
+---
+
+## POST /dev/keys/create
+
+Creates a new API key and returns the **plaintext** value once. Store it securely – it can't be retrieved later.
+
+---
+
+## PATCH /dev/keys/{key_id}
+
+Update an existing key. The most common use-case is to set or change the webhook URL that receives run completion events.
+
+```json
+{
+  "webhook_url": "https://example.com/webhook"
+}
+```
+
+---
+
+## DELETE /dev/keys/{key_id}
+
+Immediately revokes a key. Existing in-flight runs are not affected.
+
+---
+
+## GET /dev/credits/balance
+
+Returns the remaining credit balance for your account.
+
+```json
+{
+  "credits_remaining": 1000.0
+}
+``` 

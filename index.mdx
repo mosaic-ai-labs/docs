@@ -1,48 +1,41 @@
 ---
-title: "Introduction"
-description: "Start using the Mosaic API now!"
+title: "Mosaic API Overview"
+description: "Programmatic video editing workflows powered by AI."
 ---
 
-<img
-  className="block dark:hidden"
-  src="/images/hero-light.png"
-  alt="Hero Light"
-/>
+# Mosaic API
 
-<img
-  className="hidden dark:block"
-  src="/images/hero-dark.png"
-  alt="Hero Dark"
-/>
-
-## Setting up
-
-We've made it as simple as possible for you to trigger your agents.
+Mosaic lets you automate professional-grade video editing with a single REST call. Run pre-built "Agents" – AI workflows that do everything from audio enhancement to automatic cropping and animated captions – then download the finished clip.
 
 <CardGroup cols={2}>
-  <Card title="5-Minute Quickstart" icon="wind" href="https://mintlify.com/docs/quickstart">
-    Get your docs set up locally for easy development
+  <Card title="5-Minute Quickstart" icon="rocket" href="/quickstart">
+    Get set up, upload a video and run your first agent.
   </Card>
-  <Card title="Preview Changes" icon="image" href="https://mintlify.com/docs/development">
-    Preview your changes before you push to make sure they're perfect
+  <Card title="Full API Reference" icon="code" href="/api-reference/introduction">
+    Endpoints, request / response shapes and webhook events.
   </Card>
 </CardGroup>
 
-## Make it yours
+## Base URL
 
-Update your docs to your brand and add valuable content for the best user conversion.
+```text
+https://api.usemosaic.ai/api/v1/
+```
 
-<CardGroup cols={2}>
-  <Card title="Customize Style" icon="palette" href="https://mintlify.com/docs/settings/global">
-    Customize your docs to your company's colors and brands
-  </Card>
-  <Card title="Reference APIs" icon="code" href="https://mintlify.com/docs/api-playground/openapi">
-    Automatically generate endpoints from an OpenAPI spec
-  </Card>
-  <Card title="Add Components" icon="screwdriver-wrench" href="https://mintlify.com/docs/content/components/accordions">
-    Build interactive features and designs to guide your users
-  </Card>
-  <Card title="Get Inspiration" icon="stars" href="https://mintlify.com/customers">
-    Check out our showcase of our favorite documentation
-  </Card>
-</CardGroup>
+## Core Concepts
+
+### Agent
+A saved workflow graph that can be executed via `/run-agent`. Mosaic ships with a library of ready-made agents and more are added every month.
+
+### Agent Run
+An execution instance of an agent. Tracks progress (`queued → running → completed|failed`) and stores per-node metadata.
+
+### File ID
+Every uploaded asset receives a UUID (v4). Use this `file_id` when kicking off agents, or pass a local file in by using our signed url upload method.
+
+### Credits
+Billing is usage-based and function the same as the web UI. Failed runs automatically refund any unspent credits.
+
+---
+
+Looking for a paste-and-go example? Jump to the Quickstart or dive straight into the API reference.

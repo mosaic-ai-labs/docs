@@ -1,0 +1,90 @@
+---
+title: "Agent Operations"
+description: "Run an agent, track progress and download outputs."
+---
+
+## POST /run-agent
+
+Execute an agent workflow on an uploaded video file.
+
+```bash
+curl -X POST "https://api.usemosaic.ai/api/run-agent" \
+  -H "Authorization: Bearer mk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "22aa8e28-6178-4587-8cce-9d8cdb62a32c",
+    "file_id": "550e8400-e29b-41d4-a716-446655440000",
+    "auto": true
+  }'
+```
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| agent_id | string (UUID) | ✅ | ID of the agent to run |
+| file_id | string (UUID) | ✅ | ID of the uploaded file |
+| parameters | object | | Key-value overrides for agent fields |
+| auto | boolean | | Let Mosaic choose optimal parameters |
+
+### Response
+
+```json
+{
+  "agent_run_id": "run_uuid",
+  "project_id": "project_uuid",
+  "agent_group_id": "group_uuid"
+}
+```
+
+---
+
+## GET /get-agent-run/{agent_run_id}
+
+Get full run details including the workflow graph.
+
+### Response
+```json
+{
+  "id": "run_uuid",
+  "status": "running | completed | failed",
+  "graph": {
+    "nodes": [...],
+    "edges": [...]
+  }
+}
+```
+
+---
+
+## GET /get-agent-run-simple/{agent_run_id}
+
+Returns the same high-level metadata without the heavy graph payload. Poll this endpoint every ~5 seconds.
+
+---
+
+## GET /get-agent-run-outputs/{agent_run_id}
+
+Retrieve signed download URLs for all outputs of the run.
+
+```json
+{
+  "outputs": [
+    {
+      "node_id": "node_uuid",
+      "file_id": "file_uuid",
+      "download_url": "https://...",
+      "thumbnail_url": "https://...",
+      "duration_ms": 30000,
+      "file_size": 1048576,
+      "status": "success"
+    }
+  ]
+}
+```
+
+---
+
+## GET /download-rendered-video/{agent_run_node_id}
+
+Direct download for a specific node when you already know its ID.
+
+> **Tip**: Prefer `/get-agent-run-outputs` which shields you from internal node identifiers. 

@@ -1,0 +1,63 @@
+---
+title: "Video Upload"
+description: "Upload large video files in two steps before running an agent."
+---
+
+Mosaic uses signed URLs so you can upload directly to cloud storage without routing bytes through our API servers.
+
+---
+
+## POST /video/get-upload-url
+
+Returns a pre-signed URL.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| filename | string | ✅ | Original file name |
+| file_size | integer | ✅ | Size in bytes |
+| content_type | string | ✅ | MIME type, e.g. `video/mp4` |
+| project_id | string | | Session-auth only – override auto-created project |
+
+### Sample Request
+```bash
+curl -X POST "https://api.usemosaic.ai/api/video/get-upload-url" \
+  -H "Authorization: Bearer mk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{"filename":"video.mp4","file_size":1048576,"content_type":"video/mp4"}'
+```
+
+### Sample Response
+```json
+{
+  "upload_url": "https://signed-gcs-url",
+  "video_id": "video_uuid",
+  "temp_path": "temp/path"
+}
+```
+
+---
+
+## PUT {upload_url}
+
+Upload the bytes to the signed URL. Make sure to set the same `Content-Type` you passed in the previous call.
+
+---
+
+## POST /video/finalize-upload/{video_id}
+
+Converts the temporary object into a permanent asset and returns a `file_uuid` to use with agents.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| skip_project_creation | boolean | | Session-auth only |
+
+### Sample Response
+```json
+{
+  "file_uuid": "file_uuid",
+  "file_name": "video.mp4",
+  "url": "https://storage-url/video.mp4"
+}
+```
+
+> **Retry-safe**: The `finalize-upload` endpoint is idempotent – calling it twice with the same `video_id` returns the same `file_uuid`. 
