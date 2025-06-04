@@ -23,31 +23,19 @@
           {
             "group": "Overview",
             "pages": [
-              "introduction"
+              "overview/introduction",
+              "overview/agent-operations",
+              "overview/video-upload",
+              "overview/developer-portal",
+              "overview/webhooks"
             ]
           },
           {
-            "group": "Agent Operations",
+            "group": "Example Apps",
             "pages": [
-              "agent-operations"
-            ]
-          },
-          {
-            "group": "Video Upload",
-            "pages": [
-              "video-upload"
-            ]
-          },
-          {
-            "group": "Developer Portal",
-            "pages": [
-              "developer-portal"
-            ]
-          },
-          {
-            "group": "Webhooks",
-            "pages": [
-              "webhooks"
+              "example-apps/overview",
+              "example-apps/google-drive-trigger",
+              "example-apps/dropbox-trigger"
             ]
           }
         ]

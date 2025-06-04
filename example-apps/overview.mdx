@@ -1,0 +1,34 @@
+---
+title: "Example Apps – Overview"
+description: "Tour of the open-source sample integrations for Mosaic's API."
+---
+
+Mosaic provides a suite of **bite-sized, copy-pasteable example projects** that demonstrate common workflows and integrations. All live in the public GitHub repo:
+
+<Card
+  title="mosaic-ai-labs/api-examples"
+  icon="github"
+  href="https://github.com/mosaic-ai-labs/api-examples"
+>
+  Browse on GitHub
+</Card>
+
+## What's inside? (Notable Projects)
+
+| Folder | Stack | Shows off |
+| ------ | ----- | -------- |
+| `gdrive-trigger` | Python, Google API | Watch a Drive folder and process new videos (see detailed page) |
+| `dropbox-trigger` | Python, Dropbox | Edit videos and get the results right back in your storage |
+
+> **Assumptions** – Each project expects the environment variables described in its `README.md` (`MOSAIC_API_KEY`, `AGENT_ID`, etc.). Follow the per-folder instructions.
+
+## Running locally
+
+```bash
+git clone https://github.com/mosaic-ai-labs/api-examples.git
+cd api-examples/<folder>
+# set env vars …
+python main.py   # or npm start / bash run.sh or whichever command is specified in the folder's README
+```
+
+All examples are MIT-licensed – fork, adapt and embed them in your own workflows. 

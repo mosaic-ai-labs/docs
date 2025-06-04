@@ -88,3 +88,54 @@ Retrieve signed download URLs for all outputs of the run.
 Direct download for a specific node when you already know its ID.
 
 > **Tip**: Prefer `/get-agent-run-outputs` which shields you from internal node identifiers. 
+
+---
+
+## POST /retry-agent-run-node/{agent_run_node_id}
+
+Retry a specific **failed** node within an agent run instead of re-running the entire workflow.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| agent_run_node_id (path) | UUID | ✅ | ID of the node to retry. Must currently have `status=failed`. |
+
+Authentication: same as other operational endpoints – Bearer API key (`mk_…`) **or** Supabase session. Anonymous requests are rejected with `401`.
+
+### Request
+```http
+POST /retry-agent-run-node/{agent_run_node_id}
+Authorization: Bearer mk_live_xxx…
+Content-Type: application/json
+
+{}
+```
+
+### Successful response
+```json
+{
+  "success": true,
+  "agent_run_node_id": "ab12cdef-3456-7890-abcd-ef1234567890",
+  "status": "initiated",
+  "message": "Agent run node retry initiated"
+}
+```
+*HTTP 200* — the node (and all downstream nodes) are reset to `not_started`; the parent run switches back to `running`.
+
+### Error codes
+| HTTP | error | Reason |
+|------|-------|--------|
+| 400 | invalid_state | Node isn't in `failed` state |
+| 401 | invalid_api_key | Missing / invalid credentials |
+| 403 | forbidden | Node belongs to another user / too many concurrent retries |
+| 404 | not_found | Unknown node ID |
+| 500 | internal_error | Unexpected server exception |
+
+### Curl example
+```bash
+curl -X POST "https://api.usemosaic.ai/api/retry-agent-run-node/ab12cdef-3456-7890" \
+     -H "Authorization: Bearer $MOSAIC_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{}'
+```
+
+> **Limits**: Up to **three concurrent retries per agent run**. Additional attempts return `403 too_many_retries`. Calling the endpoint again while the node is already being retried is a no-op. 
