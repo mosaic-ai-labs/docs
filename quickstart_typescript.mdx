@@ -1,0 +1,125 @@
+---
+title: "TypeScript Quickstart"
+description: "End-to-end example in TypeScript: upload a video, run an agent (or a free-form prompt) and download the result."
+---
+
+Ready to automate Mosaic from TypeScript? This example uses native `fetch` – no SDK required.
+
+## 1 · Install prerequisites
+```bash
+npm init -y
+npm install --save-dev typescript @types/node tsx
+npm install dotenv
+```
+
+## 2 · Create `.env`
+```bash
+MOSAIC_API_KEY=mk_xxxxxxxxxxxxxxxxx
+MOSAIC_AGENT_ID=244XXXXXXXXXXXXXXXXXXXX   # optional if you use prompt-only
+MOSAIC_TEST_VIDEO=lightcone.mp4           # path to any video on disk
+```
+
+## 3 · Save the script
+```typescript:title=quickstart.ts
+import * as fs from 'fs';
+import * as path from 'path';
+import { config } from 'dotenv';
+config();
+
+const API = (process.env.MOSAIC_API_BASE || 'https://api.usemosaic.ai/api').replace(/\/$/, '');
+const KEY = process.env.MOSAIC_API_KEY!;
+const VIDEO_PATH = process.env.MOSAIC_TEST_VIDEO || 'example.mp4';
+const HEADERS = {
+  'Authorization': `Bearer ${KEY}`,
+  'Content-Type': 'application/json'
+};
+
+async function main() {
+  // ---- 1. upload ----
+  const videoBuffer = fs.readFileSync(VIDEO_PATH);
+  const videoStats = fs.statSync(VIDEO_PATH);
+  
+  const metaResponse = await fetch(`${API}/video/get-upload-url`, {
+    method: 'POST',
+    headers: HEADERS,
+    body: JSON.stringify({
+      filename: path.basename(VIDEO_PATH),
+      file_size: videoStats.size,
+      content_type: 'video/mp4'
+    })
+  });
+  const meta = await metaResponse.json();
+  
+  await fetch(meta.upload_url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'video/mp4' },
+    body: videoBuffer
+  });
+  
+  const finalizeResponse = await fetch(`${API}/video/finalize-upload/${meta.video_id}`, {
+    method: 'POST',
+    headers: HEADERS,
+    body: JSON.stringify({})
+  });
+  const { file_uuid } = await finalizeResponse.json();
+
+  // ---- 2. run agent (two flavours) ----
+  const USE_PROMPT = true; // flip to false to target a specific agent
+  const payload = USE_PROMPT
+    ? {
+        file_id: file_uuid,
+        auto: true,
+        prompt: "Turn this clip into a 30-second TikTok with captions"
+      }
+    : {
+        agent_id: process.env.MOSAIC_AGENT_ID,
+        file_id: file_uuid,
+        auto: true
+      };
+      
+  const runResponse = await fetch(`${API}/run-agent`, {
+    method: 'POST',
+    headers: HEADERS,
+    body: JSON.stringify(payload)
+  });
+  const { agent_run_id } = await runResponse.json();
+
+  // ---- 3. poll until done ----
+  let status = '';
+  while (true) {
+    const statusResponse = await fetch(`${API}/get-agent-run-simple/${agent_run_id}`, {
+      headers: { 'Authorization': `Bearer ${KEY}` }
+    });
+    const statusData = await statusResponse.json();
+    status = statusData.status;
+    
+    if (status === 'success' || status === 'failed') break;
+    console.log('status', status);
+    await new Promise(resolve => setTimeout(resolve, 5000));
+  }
+  
+  if (status !== 'success') throw new Error('Agent run failed');
+
+  // ---- 4. download result ----
+  const outputsResponse = await fetch(`${API}/get-agent-run-outputs/${agent_run_id}`, {
+    headers: { 'Authorization': `Bearer ${KEY}` }
+  });
+  const { outputs } = await outputsResponse.json();
+  
+  const downloadResponse = await fetch(outputs[0].download_url);
+  const outputBuffer = Buffer.from(await downloadResponse.arrayBuffer());
+  fs.writeFileSync('output.mp4', outputBuffer);
+  console.log('🎉 Saved output.mp4');
+}
+
+main().catch(console.error);
+```
+
+Run it:
+```bash
+npx tsx quickstart.ts
+```
+
+That's it – you should now have `output.mp4` in the current directory.
+
+<Note type="info">Don't want to manage raw fetch calls? A lightweight TypeScript SDK is coming soon – follow [mosaic-ai-labs on GitHub](https://github.com/mosaic-ai-labs) for updates. List your existing agents with `GET /get-user-agents-simple`.</Note> 

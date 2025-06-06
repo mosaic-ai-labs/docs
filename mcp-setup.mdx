@@ -1,0 +1,81 @@
+---
+title: "MCP Client Setup"
+description: "Connect Claude Desktop to Mosaic's hosted MCP server for seamless AI-powered video editing."
+---
+
+The **Model Context Protocol (MCP)** lets you connect AI assistants like Claude Desktop directly to Mosaic's hosted server. Once configured, you can upload videos, run agents, and download outputs using natural language – no local server required.
+
+## Prerequisites
+
+1. A Mosaic API key (`mk_…`) from the [Developer Portal](https://app.usemosaic.ai)
+2. [Claude Desktop](https://claude.ai/download) installed on your machine
+3. Node.js (for `npx` command)
+
+## 1 · Configure Claude Desktop
+
+Edit Claude Desktop's config file:
+
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+Add the Mosaic MCP server:
+
+```json
+{
+  "mcpServers": {
+    "mosaic-api": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.usemosaic.ai"
+      ],
+      "headers": {
+        "Authorization": "Bearer mk_your_api_key_here"
+      }
+    }
+  }
+}
+```
+
+> **Important:** Replace `mk_your_api_key_here` with your actual Mosaic API key.
+
+## 2 · Test the connection
+
+1. **Restart Claude Desktop** completely (quit and reopen)
+2. Start a new conversation
+3. You should see a small 🔌 icon indicating MCP tools are available
+4. Try asking: *"What Mosaic tools do you have available?"*
+
+Claude should respond with a list of available tools like `upload_video_from_url` (`upload_video_from_local_file` is not supported
+on the remotely hosted MCP server), `create_or_run_agent`, etc.
+
+## 3 · Example usage
+
+Once connected, you can ask Claude to:
+
+- *"Upload this video file from this url and create a 30-second trailer with captions"*
+- *"List my available Mosaic agents"*  
+- *"Check the status of run ID abc123"*
+- *"Give me the download link for the outputs from my latest agent run"*
+
+Claude will automatically call the appropriate MCP tools and handle the Mosaic API interactions for you.
+
+## Local development (optional)
+
+If you want to run the MCP server locally for development:
+
+1. Clone the [examples repo](https://github.com/mosaic-ai-labs/api-examples)
+2. Follow the setup in [`mosaic-mcp/README.md`](https://github.com/mosaic-ai-labs/api-examples/tree/main/mosaic-mcp)
+3. Change the URL to `http://localhost:8000` in your Claude config
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| 🔌 icon not showing | Check the config file path and restart Claude Desktop |
+| "Authorization failed" | Verify your API key is correct and starts with `mk_` |
+| "Command not found" error | Ensure Node.js is installed (`node --version`) |
+| Tools timeout | Check your internet connection to `mcp.usemosaic.ai` |
+
+<Note type="tip">The hosted MCP server is the easiest way to get started. For advanced use cases or custom modifications, see the [Mosaic MCP Server example](/example-apps/mosaic-mcp-server).</Note> 

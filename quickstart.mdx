@@ -44,11 +44,17 @@ FILE_ID=$(cat file_id.txt)
 ## 3. Kick off an agent
 
 ```bash
-# Audio Enhance agent – automatically picks the best parameters
+# OPTION A – Let Mosaic choose an agent based on a natural-language prompt
 curl -s -X POST "$BASE_URL/run-agent" \
   -H "Authorization: Bearer $MOSAIC_API_KEY" \
   -H "Content-Type: application/json" \
-  -d "{\n  \"agent_id\": \"425274c9-7735-4cf2-b7cb-46c6a7f0066a\",\n  \"file_id\": \"$FILE_ID\",\n  \"auto\": true\n}" > run.json
+  -d "{\n  \"file_id\": \"$FILE_ID\",\n  \"auto\": true,\n  \"prompt\": \"Create a punchy 30-second trailer with background music and captions\"\n}" > run.json
+
+# OPTION B – Target a specific agent (list yours with GET /get-user-agents-simple)
+# curl -s -X POST "$BASE_URL/run-agent" \
+#   -H "Authorization: Bearer $MOSAIC_API_KEY" \
+#   -H "Content-Type: application/json" \
+#   -d "{\n#   \"agent_id\": \"425274c9-7735-4cf2-b7cb-46c6a7f0066a\",\n#   \"file_id\": \"$FILE_ID\",\n#   \"auto\": true\n# }" > run.json
 RUN_ID=$(jq -r .agent_run_id run.json)
 ```
 

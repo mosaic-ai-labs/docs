@@ -5,6 +5,8 @@ description: "Watch a Dropbox folder, edit new videos with Mosaic, and write the
 
 Need an automated assembly line for your Dropbox clips? This example script polls a folder, sends every fresh video to Mosaic, then uploads the processed output **back to the same Dropbox folder** with `-mosaic-output` appended to the file name.
 
+[View source on GitHub](https://github.com/mosaic-ai-labs/api-examples/tree/main/dropbox-trigger)
+
 ```mermaid
 graph LR;
     A["Dropbox Folder"] -->|"new video"| B["dropbox_trigger.py script"];

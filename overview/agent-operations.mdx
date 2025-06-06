@@ -3,6 +3,42 @@ title: "Agent Operations"
 description: "Run an agent, track progress and download outputs."
 ---
 
+## GET /get-user-agents-simple
+
+Return a lightweight list of **your own agents** – handy for populating dropdowns or showing recent creations in a UI.
+
+| Query | Type | Default | Notes |
+| --- | --- | --- | --- |
+| limit | integer (1-100) | all | Caps the number of agents returned (newest first) |
+
+Authentication is identical to other operational endpoints:
+* Bearer API key (`mk_…`) or `X-API-Key` header
+* Supabase session JWT for the Mosaic dashboard
+
+### Example – list the five most-recent agents
+```bash
+curl -s "https://api.usemosaic.ai/api/get-user-agents-simple?limit=5" \
+     -H "Authorization: Bearer $MOSAIC_API_KEY"
+```
+
+### Response
+```json
+{
+  "agents": [
+    {
+      "id": "agent-uuid",
+      "name": "My Caption Preset",
+      "description": "Animated captions in brand colours",
+      "created_at": "2025-06-01T12:00:00Z"
+    }
+  ]
+}
+```
+
+> The endpoint returns only **your** agents; there is no global marketplace yet. Results are sorted by `created_at` descending.
+
+---
+
 ## POST /run-agent
 
 Execute an agent workflow on an uploaded video file.
@@ -14,7 +50,8 @@ curl -X POST "https://api.usemosaic.ai/api/run-agent" \
   -d '{
     "agent_id": "22aa8e28-6178-4587-8cce-9d8cdb62a32c",
     "file_id": "550e8400-e29b-41d4-a716-446655440000",
-    "auto": true
+    "auto": true,
+    "prompt": "Generate a summary of the video"
   }'
 ```
 
@@ -24,6 +61,7 @@ curl -X POST "https://api.usemosaic.ai/api/run-agent" \
 | file_id | string (UUID) | ✅ | ID of the uploaded file |
 | parameters | object | | Key-value overrides for agent fields |
 | auto | boolean | | Let Mosaic choose optimal parameters |
+| prompt | string | | Natural-language instruction; Mosaic picks an agent & parameters based on the prompt |
 
 ### Response
 
@@ -119,23 +157,4 @@ Content-Type: application/json
   "message": "Agent run node retry initiated"
 }
 ```
-*HTTP 200* — the node (and all downstream nodes) are reset to `not_started`; the parent run switches back to `running`.
-
-### Error codes
-| HTTP | error | Reason |
-|------|-------|--------|
-| 400 | invalid_state | Node isn't in `failed` state |
-| 401 | invalid_api_key | Missing / invalid credentials |
-| 403 | forbidden | Node belongs to another user / too many concurrent retries |
-| 404 | not_found | Unknown node ID |
-| 500 | internal_error | Unexpected server exception |
-
-### Curl example
-```bash
-curl -X POST "https://api.usemosaic.ai/api/retry-agent-run-node/ab12cdef-3456-7890" \
-     -H "Authorization: Bearer $MOSAIC_API_KEY" \
-     -H "Content-Type: application/json" \
-     -d '{}'
-```
-
-> **Limits**: Up to **three concurrent retries per agent run**. Additional attempts return `403 too_many_retries`. Calling the endpoint again while the node is already being retried is a no-op. 
+*HTTP 200* — the node (and all downstream nodes) are reset to `not_started`; the parent run switches back to `

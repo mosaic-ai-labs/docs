@@ -17,7 +17,10 @@
             "group": "Get Started",
             "pages": [
               "index",
-              "quickstart"
+              "quickstart",
+              "quickstart_python",
+              "quickstart_typescript",
+              "mcp-setup"
             ]
           },
           {
@@ -35,7 +38,9 @@
             "pages": [
               "example-apps/overview",
               "example-apps/google-drive-trigger",
-              "example-apps/dropbox-trigger"
+              "example-apps/dropbox-trigger",
+              "example-apps/mosaic-mcp-server",
+              "example-apps/create-shorts-web-app"
             ]
           }
         ]
