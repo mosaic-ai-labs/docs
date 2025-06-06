@@ -27,13 +27,37 @@ Add the Mosaic MCP server:
       "command": "npx",
       "args": [
         "-y",
-        "mcp-remote",
-        "https://mcp.usemosaic.ai"
+        "mcp-remote@latest",
+        "https://mcp.usemosaic.ai/",
+        "--http-only",
+        "--header",
+        "Authorization:${AUTH_HEADER}"
       ],
-      "headers": {
-        "Authorization": "Bearer mk_your_api_key_here"
+      "env": {
+        "AUTH_HEADER": "Bearer mk_..."
       }
     }
+  }
+}
+```
+
+On Windows you may have to use the following config to avoid path issues:
+
+```json
+"mosaic-api": {
+  "command": "npx",
+  "args": [
+    "-y",
+    "mcp-remote@latest",
+    "https://mcp.usemosaic.ai/",
+    "--http-only",
+    "--header",
+    "Authorization:${AUTH_HEADER}"
+  ],
+  "env": {
+    "AUTH_HEADER": "Bearer mk_xxxxxxxxxxxxxxxxx",
+    "APPDATA":  "C:\\Users\\YOUR_USERNAME\\AppData\\Roaming",
+    "NPM_CONFIG_CACHE": "C:\\Users\\YOUR_USERNAME\\AppData\\Roaming\\npm-cache"
   }
 }
 ```
