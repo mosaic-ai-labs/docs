@@ -37,6 +37,7 @@ curl -X PUT "$UPLOAD_URL" \
 # Finalise the upload (returns file_uuid)
 curl -s -X POST "$BASE_URL/video/finalize-upload/$VIDEO_ID" \
   -H "Authorization: Bearer $MOSAIC_API_KEY" \
+  -H "Content-Type: application/json" \
   -d '{}' | jq -r .file_uuid > file_id.txt
 FILE_ID=$(cat file_id.txt)
 ```
