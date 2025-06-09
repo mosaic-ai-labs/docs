@@ -1,0 +1,70 @@
+---
+title: "Vercel AI SDK + Mosaic Demo"
+description: "AI-powered code generation meets video editing – React components with live preview & Mosaic MCP integration."
+---
+
+`vercel-ai-sdk-example/` is a Next.js playground that demonstrates the Vercel AI SDK's code generation capabilities combined with Mosaic's video editing tools through MCP integration.
+
+[View source on GitHub](https://github.com/mosaic-ai-labs/api-examples/tree/main/vercel-ai-sdk-example)
+
+## 1 · What it does
+
+```mermaid
+graph TD;
+    U[User] -->|Click button| A[Chat Interface];
+    A -->|Send message| B[Vercel AI SDK];
+    B -->|Generate code| C[OpenAI GPT-4o];
+    C -->|Stream TSX| B;
+    B -->|Transform| D[Babel Compiler];
+    D -->|Render preview| E[Live Preview];
+    B -->|MCP tools| F[Mosaic API];
+    F -->|Process video| U;
+```
+
+1. Auto-generates React components using GPT-4o via Vercel AI SDK
+2. Live preview of generated TSX code with Babel transformation
+3. Connects to Mosaic MCP server for video editing capabilities
+4. Split-pane interface with chat on left, preview on right
+
+## 2 · Environment variables (`.env.local`)
+```ini
+# OpenAI
+OPENAI_API_KEY=sk_…
+
+# Mosaic
+MOSAIC_API_KEY=mk_…
+```
+
+## 3 · Install & run
+```bash
+cd vercel-ai-sdk-example
+pnpm install
+pnpm dev              # http://localhost:3000
+```
+
+## 4 · Technical flow
+```mermaid
+graph TD;
+    A[page.tsx] -->|useChat hook| B[API Route];
+    B -->|streamText| C[OpenAI];
+    C -->|TSX code| B;
+    B -->|toDataStreamResponse| D[Chat.tsx];
+    D -->|extract code| E[Preview.tsx];
+    E -->|Babel transform| F[iframe sandbox];
+    B -->|MCP client| G[Mosaic Tools];
+```
+
+## 5 · Key features
+
+• **Real-time generation** – Watch React components materialize as AI streams the code  
+• **Live preview** – Instant visual feedback with Babel in-browser compilation  
+• **MCP integration** – Native `experimental_createMCPClient` for Mosaic tool access  
+• **Error handling** – Graceful compilation & runtime error display  
+• **Button-driven UX** – Pre-configured prompts eliminate typing
+
+## 6 · Customising
+
+• Modify system prompt in `/api/chat/route.ts` to change generation style  
+• Add new button flows in `page.tsx` with different demo scenarios  
+• Extend Preview component to support external dependencies  
+• Complete Mosaic MCP integration for full video editing workflow 

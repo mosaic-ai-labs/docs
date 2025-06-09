@@ -5,61 +5,94 @@ description: "Upload a video and run your first Mosaic agent in under 5 minutes.
 
 ## Prerequisites
 
-1. A Mosaic account – [Sign up](https://app.usemosaic.ai/) or [join the waitlist](https://usemosaic.ai/waitlist) if you don't already have access. 
-2. An **API key** starting with `mk_…`. Create one in the Developer Portal.
-3. `curl`, `jq` (optional) and a video file on your machine.
+1. A Mosaic account – [Sign up](https://app.usemosaic.ai/) or [join the waitlist](https://usemosaic.ai/waitlist)
+2. An **API key** starting with `mk_…` from the Developer Portal
+3. `curl`, `jq` (optional), and a video file
 
-## 1. Export your credentials
+## 1. Set credentials
 
 ```bash
-export MOSAIC_API_KEY="mk_live_xxxxxxxxx"
+export MOSAIC_API_KEY="YOUR_API_KEY_HERE"
 export BASE_URL="https://api.usemosaic.ai/api"
 ```
 
-## 2. Upload a video
+## 2. Request upload URL
 
 ```bash
-# Request a signed upload URL
 curl -s -X POST "$BASE_URL/video/get-upload-url" \
   -H "Authorization: Bearer $MOSAIC_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"filename": "video.mp4", "file_size": 12345678, "content_type": "video/mp4"}' \
-  > upload.json
+  -d '{
+    "filename": "YOUR_FILENAME_HERE",
+    "file_size": YOUR_FILE_SIZE_IN_BYTES,
+    "content_type": "YOUR_VIDEO_FORMAT_HERE"
+  }' > upload.json
+```
 
+## 3. Extract upload details
+
+```bash
 UPLOAD_URL=$(jq -r .upload_url upload.json)
 VIDEO_ID=$(jq -r .video_id upload.json)
+```
 
-# PUT the bytes (signed URL is time-limited)
+## 4. Upload video file
+
+```bash
 curl -X PUT "$UPLOAD_URL" \
-  -H "Content-Type: video/mp4" \
-  --data-binary @video.mp4
+  -H "Content-Type: YOUR_CONTENT_TYPE_HERE" \
+  --data-binary @YOUR_VIDEO_FILE_PATH
+```
 
-# Finalise the upload (returns file_uuid)
+## 5. Finalize upload
+
+```bash
 curl -s -X POST "$BASE_URL/video/finalize-upload/$VIDEO_ID" \
   -H "Authorization: Bearer $MOSAIC_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{}' | jq -r .file_uuid > file_id.txt
+
 FILE_ID=$(cat file_id.txt)
 ```
 
-## 3. Kick off an agent
+## 6. Run an agent
+
+<Tabs>
+  <Tab title="Option A: Auto-select agent">
+    Let Mosaic choose an agent based on your prompt:
+    ```bash
+    curl -s -X POST "$BASE_URL/run-agent" \
+      -H "Authorization: Bearer $MOSAIC_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "file_id": "'$FILE_ID'",
+        "prompt": "YOUR_PROMPT_HERE"
+      }' > run.json
+    ```
+  </Tab>
+  <Tab title="Option B: Specific agent">
+    Target a specific agent by ID:
+    ```bash
+    curl -s -X POST "$BASE_URL/run-agent" \
+      -H "Authorization: Bearer $MOSAIC_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "agent_id": "YOUR_AGENT_ID_HERE",
+        "file_id": "'$FILE_ID'",
+        "auto": true
+      }' > run.json
+    ```
+    <Note>Get your agent IDs with `GET /get-user-agents-simple`</Note>
+  </Tab>
+</Tabs>
+
+## 7. Save run ID
 
 ```bash
-# OPTION A – Let Mosaic choose an agent based on a natural-language prompt
-curl -s -X POST "$BASE_URL/run-agent" \
-  -H "Authorization: Bearer $MOSAIC_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d "{\n  \"file_id\": \"$FILE_ID\",\n  \"auto\": true,\n  \"prompt\": \"Create a punchy 30-second trailer with background music and captions\"\n}" > run.json
-
-# OPTION B – Target a specific agent (list yours with GET /get-user-agents-simple)
-# curl -s -X POST "$BASE_URL/run-agent" \
-#   -H "Authorization: Bearer $MOSAIC_API_KEY" \
-#   -H "Content-Type: application/json" \
-#   -d "{\n#   \"agent_id\": \"425274c9-7735-4cf2-b7cb-46c6a7f0066a\",\n#   \"file_id\": \"$FILE_ID\",\n#   \"auto\": true\n# }" > run.json
 RUN_ID=$(jq -r .agent_run_id run.json)
 ```
 
-## 4. Poll status
+## 8. Check status
 
 ```bash
 until [[ $(curl -s "$BASE_URL/get-agent-run-simple/$RUN_ID" \
@@ -68,14 +101,19 @@ until [[ $(curl -s "$BASE_URL/get-agent-run-simple/$RUN_ID" \
 done
 ```
 
-## 5. Download the output
+## 9. Get output URLs
 
 ```bash
 curl -s "$BASE_URL/get-agent-run-outputs/$RUN_ID" \
-  -H "Authorization: Bearer $MOSAIC_API_KEY" > outs.json
-curl -L $(jq -r .outputs[0].download_url outs.json) -o enhanced.mp4
+  -H "Authorization: Bearer $MOSAIC_API_KEY" > outputs.json
 ```
 
-That's it – you now have an AI-enhanced video on your disk. 🎉
+## 10. Download result
 
-<Note type="tip">Most agents support the `auto` flag which lets Mosaic's AI model pick sensible defaults for you with context on your video.</Note>
+```bash
+curl -L $(jq -r .outputs[0].download_url outputs.json) -o enhanced.mp4
+```
+
+🎉 Your AI-enhanced video is ready!
+
+<Note>The `auto` flag lets Mosaic's AI pick sensible defaults based on your video content.</Note>

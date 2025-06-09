@@ -20,49 +20,55 @@ Edit Claude Desktop's config file:
 
 Add the Mosaic MCP server:
 
-```json
-{
-  "mcpServers": {
-    "mosaic-api": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote@latest",
-        "https://mcp.usemosaic.ai",
-        "--http-only",
-        "--header",
-        "Authorization:${AUTH_HEADER}"
-      ],
-      "env": {
-        "AUTH_HEADER": "Bearer mk_..."
+<Tabs>
+  <Tab title="macOS/Linux">
+    ```json
+    {
+      "mcpServers": {
+        "mosaic-api": {
+          "command": "npx",
+          "args": [
+            "-y",
+            "mcp-remote@latest",
+            "https://mcp.usemosaic.ai",
+            "--http-only",
+            "--header",
+            "Authorization:${AUTH_HEADER}"
+          ],
+          "env": {
+            "AUTH_HEADER": "Bearer YOUR_API_KEY_HERE"
+          }
+        }
       }
     }
-  }
-}
-```
-
-On Windows you may have to use the following config to avoid path issues:
-
-```json
-"mosaic-api": {
-  "command": "npx",
-  "args": [
-    "-y",
-    "mcp-remote@latest",
-    "https://mcp.usemosaic.ai",
-    "--http-only",
-    "--header",
-    "Authorization:${AUTH_HEADER}"
-  ],
-  "env": {
-    "AUTH_HEADER": "Bearer mk_xxxxxxxxxxxxxxxxx",
-    "APPDATA":  "C:\\Users\\YOUR_USERNAME\\AppData\\Roaming",
-    "NPM_CONFIG_CACHE": "C:\\Users\\YOUR_USERNAME\\AppData\\Roaming\\npm-cache"
-  }
-}
-```
-
-> **Important:** Replace `mk_your_api_key_here` with your actual Mosaic API key.
+    ```
+  </Tab>
+  <Tab title="Windows">
+    ```json
+    {
+      "mcpServers": {
+        "mosaic-api": {
+          "command": "npx",
+          "args": [
+            "-y",
+            "mcp-remote@latest",
+            "https://mcp.usemosaic.ai",
+            "--http-only",
+            "--header",
+            "Authorization:${AUTH_HEADER}"
+          ],
+          "env": {
+            "AUTH_HEADER": "Bearer YOUR_API_KEY_HERE",
+            "APPDATA": "C:\\Users\\YOUR_USERNAME\\AppData\\Roaming",
+            "NPM_CONFIG_CACHE": "C:\\Users\\YOUR_USERNAME\\AppData\\Roaming\\npm-cache"
+          }
+        }
+      }
+    }
+    ```
+    <Note>Windows requires additional environment variables to avoid path issues.</Note>
+  </Tab>
+</Tabs>
 
 ## 2 · Test the connection
 
