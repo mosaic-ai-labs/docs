@@ -51,7 +51,7 @@ Execute an agent workflow on an uploaded video file.
       -H "Authorization: Bearer mk_your_api_key" \
       -H "Content-Type: application/json" \
       -d '{
-        "file_id": "550e8400-e29b-41d4-a716-446655440000",
+        "file_id": "550e8400-e29b-41d4-a716-446655440000",  # or youtube_<videoId>
         "prompt": "Generate a summary of the video"
       }'
     ```
@@ -64,7 +64,7 @@ Execute an agent workflow on an uploaded video file.
       -H "Content-Type: application/json" \
       -d '{
         "agent_id": "22aa8e28-6178-4587-8cce-9d8cdb62a32c",
-        "file_id": "550e8400-e29b-41d4-a716-446655440000",
+        "file_id": "550e8400-e29b-41d4-a716-446655440000",  # or youtube_<videoId>
         "auto": true
       }'
     ```
@@ -73,13 +73,15 @@ Execute an agent workflow on an uploaded video file.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| file_id | string (UUID) | ✅ | ID of the uploaded file |
+| file_id | string (`uuid-v4` **or** `youtube_<videoId>`) | ✅ | Upload UUID **or** YouTube video ID prefixed with `youtube_` |
 | agent_id | string (UUID) | ⚠️ | ID of the agent to run (mutually exclusive with `prompt`) |
 | prompt | string | ⚠️ | Natural-language instruction; Mosaic picks an agent & parameters (mutually exclusive with `agent_id`) |
 | parameters | object | | Key-value overrides for agent fields |
 | auto | boolean | | Let Mosaic choose optimal parameters (only used with `agent_id`) |
 
-<Note>Use either `agent_id` OR `prompt`, not both. When using `prompt`, Mosaic automatically selects the best agent and parameters.</Note>
+<Note>
+Use either `agent_id` OR `prompt`, not both. To process a public YouTube video without uploading, pass a `file_id` like `youtube_dQw4w9WgXcQ`.
+</Note>
 
 ### Response
 
