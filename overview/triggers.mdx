@@ -1,0 +1,298 @@
+---
+title: "Triggers"
+description: "Automatically run agents when new content is available"
+---
+
+<Warning>
+This documentation describes endpoints that are not yet deployed. They will be available soon.
+</Warning>
+
+## Overview
+
+Triggers allow you to automatically run agents when new videos are uploaded to external platforms. Currently, Mosaic supports YouTube channel monitoring, with more platforms coming soon.
+
+When a trigger detects new content, it automatically starts an agent run with the new video, making it perfect for content creators who want to automate their video editing workflows.
+
+### Multiple Triggers
+
+On the agent canvas, you can configure multiple triggers for a single agent. Each trigger operates independently and can monitor different YouTube channels or have different callback URLs. This allows you to:
+- Monitor multiple YouTube channels with different configurations
+- Route webhooks to different endpoints based on the trigger
+- Organize your automation workflows more effectively
+
+---
+
+## YouTube Triggers
+
+Monitor YouTube channels and automatically process new videos as they're uploaded.
+
+### GET /agent/[agent_id]/triggers
+
+Retrieve all triggers configured for an agent.
+
+```bash
+curl -X GET "https://api.usemosaic.ai/agent/[agent_id]/triggers" \
+  -H "Authorization: Bearer mk_your_api_key"
+```
+
+### Response
+```json
+[
+  {
+    "id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f",
+    "type": "youtube",
+    "youtube_channels": [
+      "https://www.youtube.com/channel/UCxxxxxx",
+      "https://www.youtube.com/@channelname"
+    ],
+    "callback_url": "https://your-app.com/webhooks/trigger"
+  }
+]
+```
+
+---
+
+## Managing YouTube Channels
+
+### Convenience Endpoints (Lowest ID)
+
+These endpoints automatically select the YouTube trigger with the lowest ID, making it easy to manage triggers without knowing specific trigger IDs.
+
+#### POST /agent/[agent_id]/triggers/lowest_youtube_id/add_listeners
+
+Add YouTube channels to monitor for new videos. This convenience endpoint:
+- Automatically selects the YouTube trigger with the lowest ID
+- Creates a new trigger if none exist
+- Supports both channel IDs and channel URLs
+
+```bash
+curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/lowest_youtube_id/add_listeners" \
+  -H "Authorization: Bearer mk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "youtube_channels": [
+      "UCxxxxxxxxxxxxxx",
+      "https://www.youtube.com/@mkbhd"
+    ],
+    "trigger_callback_url": "https://your-app.com/webhooks/youtube-trigger"
+  }'
+```
+
+### Parameters
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| youtube_channels | string[] | ✅ | YouTube channel IDs or URLs to monitor |
+| trigger_callback_url | string \| null | ✅ | Webhook URL for trigger notifications (set to `null` to remove) |
+
+<Note>
+**Important**: 
+- If a callback URL already exists, providing a new one will replace it
+- Set `trigger_callback_url` to `null` to remove the webhook URL from the trigger
+</Note>
+
+#### POST /agent/[agent_id]/triggers/lowest_youtube_id/remove_listeners
+
+Stop monitoring specific YouTube channels on the trigger with the lowest ID.
+
+```bash
+curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/lowest_youtube_id/remove_listeners" \
+  -H "Authorization: Bearer mk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "youtube_channels": ["UCxxxxxxxxxxxxxx"]
+  }'
+```
+
+### Specific Trigger Endpoints
+
+For more control, you can manage listeners on specific triggers using their trigger ID.
+
+#### POST /agent/[agent_id]/triggers/[trigger_id]/add_listeners
+
+Add YouTube channels to a specific trigger.
+
+```bash
+curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/[trigger_id]/add_listeners" \
+  -H "Authorization: Bearer mk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "youtube_channels": ["UCxxxxxxxxxxxxxx", "https://www.youtube.com/@channel"],
+    "trigger_callback_url": "https://your-app.com/webhooks/trigger"
+  }'
+```
+
+**Note**: Returns a 404 error if the trigger ID doesn't exist.
+
+#### POST /agent/[agent_id]/triggers/[trigger_id]/remove_listeners
+
+Remove YouTube channels from a specific trigger.
+
+```bash
+curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/[trigger_id]/remove_listeners" \
+  -H "Authorization: Bearer mk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "youtube_channels": ["UCxxxxxxxxxxxxxx"]
+  }'
+```
+
+**Note**: Returns a 404 error if the trigger ID doesn't exist.
+
+#### POST /agent/[agent_id]/triggers/[trigger_id]/update
+
+Update the callback URL for a specific trigger.
+
+```bash
+curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/[trigger_id]/update" \
+  -H "Authorization: Bearer mk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "trigger_callback_url": null  // Set to null to remove the callback URL
+  }'
+```
+
+**Note**: Returns a 404 error if the trigger ID doesn't exist.
+
+---
+
+## Trigger Webhooks
+
+When a trigger detects new content and starts an agent run, webhooks are sent to your configured `callback_url` (if provided when running the agent). These webhooks follow the exact same format as manual agent runs, with the addition of a `triggered_by` field.
+
+### Webhook Payload
+
+```json
+{
+  "flag": "RUN_STARTED",
+  "agent_id": "123e4567-e89b-12d3-a456-789012345678",
+  "run_id": "7f8d9c2b-4a6e-8b3f-1d5c-9e2f3a4b5c6d",
+  "status": "running",
+  "inputs": [
+    {
+      "video_id": "youtube_dQw4w9WgXcQ",
+      "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "thumbnail_url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg"
+    }
+  ],
+  "triggered_by": {
+    "id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f",
+    "type": "youtube",
+    "youtube": {
+      "id": "dQw4w9WgXcQ",
+      "channel": "UCxxxxxxxxxxxxxx",
+      "title": "Never Gonna Give You Up",
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    }
+  }
+}
+```
+
+When the run completes:
+
+```json
+{
+  "flag": "RUN_FINISHED",
+  "agent_id": "123e4567-e89b-12d3-a456-789012345678",
+  "run_id": "7f8d9c2b-4a6e-8b3f-1d5c-9e2f3a4b5c6d",
+  "status": "completed",
+  "inputs": [
+    {
+      "video_id": "youtube_dQw4w9WgXcQ",
+      "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "thumbnail_url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg"
+    }
+  ],
+  "outputs": [
+    {
+      "video_url": "https://storage.googleapis.com/mosaic-outputs/output.mp4",
+      "thumbnail_url": "https://storage.googleapis.com/mosaic-thumbnails/thumb.jpg"
+    }
+  ],
+  "triggered_by": {
+    "id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f",
+    "type": "youtube",
+    "youtube": {
+      "id": "dQw4w9WgXcQ",
+      "channel": "UCxxxxxxxxxxxxxx",
+      "title": "Never Gonna Give You Up",
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    }
+  }
+}
+```
+
+<Note>
+The webhook payload format is identical for both manual and triggered runs. The only difference is that triggered runs include the `triggered_by` field, while manual API runs do not.
+</Note>
+
+---
+
+## Complete Example
+
+Here's how to set up automatic video processing for a YouTube channel:
+
+```python
+import requests
+
+API_KEY = "mk_your_api_key"
+BASE_URL = "https://api.usemosaic.ai"
+AGENT_ID = "{agent_id}"
+
+headers = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json"
+}
+
+# Add YouTube channels to monitor
+response = requests.post(
+    f"{BASE_URL}/agent/{AGENT_ID}/triggers/lowest_youtube_id/add_listeners",
+    headers=headers,
+    json={
+        "youtube_channels": [
+            "https://www.youtube.com/@yourchannel",
+            "UCxxxxxxxxxxxxxx"  # Can use channel ID too
+        ],
+        "trigger_callback_url": "https://your-app.com/webhooks/youtube"
+    }
+)
+
+# Check configured triggers
+triggers_response = requests.get(
+    f"{BASE_URL}/agent/{AGENT_ID}/triggers",
+    headers=headers
+)
+triggers = triggers_response.json()
+
+for trigger in triggers:
+    if trigger["type"] == "youtube":
+        print(f"Monitoring {len(trigger['youtube_channels'])} channels")
+        for channel in trigger["youtube_channels"]:
+            print(f"  - {channel}")
+```
+
+## Use Cases
+
+1. **Content Repurposing**: Automatically create shorts from new long-form videos
+2. **Multi-Language Content**: Generate translated versions when new videos are uploaded
+3. **Accessibility**: Add captions to all new videos automatically
+4. **Brand Consistency**: Apply your brand's visual style to all new content
+
+## Best Practices
+
+1. **Webhook Reliability**: Implement proper webhook handling with retry logic
+2. **Channel Selection**: Only monitor channels you have permission to process
+3. **Error Handling**: Set up alerting for failed agent runs triggered automatically
+
+## Limitations
+
+- YouTube triggers check for new videos every 15 minutes
+- Only public videos are detected
+- Videos must be fully processed by YouTube before triggering
+
+## Coming Soon
+
+- Twitter/X video monitoring
+- TikTok integration
+- Custom RSS feed triggers
+- Dropbox/Google Drive folder monitoring

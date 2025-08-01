@@ -1,152 +1,620 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "OpenAPI Plant Store",
-    "description": "A sample API that uses a plant store as an example to demonstrate features in the OpenAPI specification",
-    "license": {
-      "name": "MIT"
-    },
-    "version": "1.0.0"
+    "title": "Mosaic AI API",
+    "description": "Professional-grade video editing workflows powered by AI agents",
+    "version": "2.0.0",
+    "contact": {
+      "email": "adish@usemosaic.ai"
+    }
   },
   "servers": [
     {
-      "url": "http://sandbox.mintlify.com"
+      "url": "https://api.usemosaic.ai"
     }
   ],
   "security": [
     {
       "bearerAuth": []
+    },
+    {
+      "apiKeyAuth": []
     }
   ],
   "paths": {
-    "/plants": {
+    "/videos/get_upload_url": {
       "get": {
-        "description": "Returns all plants from the system that the user has access to",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "The maximum number of results to return",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
+        "summary": "Get video upload URL",
+        "description": "Get a pre-signed URL to upload a video directly to cloud storage",
+        "operationId": "getUploadUrl",
+        "tags": ["Videos"],
         "responses": {
           "200": {
-            "description": "Plant response",
+            "description": "Upload URL generated successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Plant"
+                  "type": "object",
+                  "properties": {
+                    "video_id": {
+                      "type": "string",
+                      "description": "Unique identifier for the video"
+                    },
+                    "upload_url": {
+                      "type": "string",
+                      "description": "Pre-signed URL for uploading the video"
+                    }
+                  },
+                  "required": ["video_id", "upload_url"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          }
+        }
+      }
+    },
+    "/videos/finalize_upload": {
+      "post": {
+        "summary": "Finalize video upload",
+        "description": "Finalize the video upload process and optionally specify a folder path",
+        "operationId": "finalizeUpload",
+        "tags": ["Videos"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "video_id": {
+                    "type": "string",
+                    "description": "The video ID returned from get_upload_url"
+                  },
+                  "folder_path": {
+                    "type": "string",
+                    "description": "Optional folder path to organize the video"
+                  }
+                },
+                "required": ["video_id"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Upload finalized successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": ["ok"],
+                      "description": "Status of the operation"
+                    }
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "Unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "description": "Creates a new plant in the store",
-        "requestBody": {
-          "description": "Plant to add to the store",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewPlant"
-              }
-            }
+            "$ref": "#/components/responses/BadRequestError"
           },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "plant response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Plant"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
           }
         }
       }
     },
-    "/plants/{id}": {
-      "delete": {
-        "description": "Deletes a single plant based on the ID supplied",
+    "/agent/{agent_id}/run": {
+      "post": {
+        "summary": "Run an agent",
+        "description": "Execute an agent workflow on uploaded videos",
+        "operationId": "runAgent",
+        "tags": ["Agents"],
         "parameters": [
           {
-            "name": "id",
+            "name": "agent_id",
             "in": "path",
-            "description": "ID of plant to delete",
             "required": true,
+            "description": "The ID of the agent to run",
             "schema": {
-              "type": "integer",
-              "format": "int64"
+              "type": "string"
             }
           }
         ],
-        "responses": {
-          "204": {
-            "description": "Plant deleted",
-            "content": {}
-          },
-          "400": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  },
-  "webhooks": {
-    "/plant/webhook": {
-      "post": {
-        "description": "Information about a new plant added to the store",
         "requestBody": {
-          "description": "Plant added to the store",
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewPlant"
+                "type": "object",
+                "properties": {
+                  "video_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Array of video IDs to process"
+                  },
+                  "callback_url": {
+                    "type": "string",
+                    "description": "Optional webhook URL for status updates"
+                  }
+                },
+                "required": ["video_ids"]
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Return a 200 status to indicate that the data was received successfully"
+            "description": "Agent run started successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "run_id": {
+                      "type": "string",
+                      "description": "Unique identifier for this agent run"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/agent_run/{run_id}": {
+      "get": {
+        "summary": "Get agent run status",
+        "description": "Retrieve the current status and outputs of an agent run",
+        "operationId": "getAgentRunStatus",
+        "tags": ["Agents"],
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the agent run",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent run status retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentRunStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/agent/{agent_id}/triggers": {
+      "get": {
+        "summary": "Get agent triggers",
+        "description": "Retrieve all triggers configured for an agent",
+        "operationId": "getAgentTriggers",
+        "tags": ["Triggers"],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the agent",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Triggers retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Trigger"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/agent/{agent_id}/triggers/lowest_youtube_id/add_listeners": {
+      "post": {
+        "summary": "Add YouTube channel listeners",
+        "description": "Add YouTube channels to monitor for new videos. Updates the trigger with the lowest ID or creates a new one if none exist.",
+        "operationId": "addYoutubeListeners",
+        "tags": ["Triggers"],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the agent",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "youtube_channels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Array of YouTube channel IDs or URLs to monitor"
+                  },
+                  "trigger_callback_url": {
+                    "type": ["string", "null"],
+                    "description": "Webhook URL for trigger notifications (replaces existing if set, use null to remove)"
+                  }
+                },
+                "required": ["youtube_channels", "trigger_callback_url"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Listeners added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": ["ok"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+            }
+          }
+        }
+      },
+    "/agent/{agent_id}/triggers/lowest_youtube_id/remove_listeners": {
+      "post": {
+        "summary": "Remove YouTube channel listeners",
+        "description": "Remove YouTube channels from monitoring",
+        "operationId": "removeYoutubeListeners",
+        "tags": ["Triggers"],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the agent",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "youtube_channels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Array of YouTube channel IDs or URLs to stop monitoring"
+                  }
+                },
+                "required": ["youtube_channels"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Listeners removed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": ["ok"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/agent/{agent_id}/triggers/{trigger_id}/add_listeners": {
+      "post": {
+        "summary": "Add YouTube channel listeners to specific trigger",
+        "description": "Add YouTube channels to a specific trigger. Returns 404 if the trigger doesn't exist.",
+        "operationId": "addYoutubeListenersToTrigger",
+        "tags": ["Triggers"],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the agent",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "trigger_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the trigger",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "youtube_channels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Array of YouTube channel IDs or URLs to monitor"
+                  },
+                  "trigger_callback_url": {
+                    "type": ["string", "null"],
+                    "description": "Webhook URL for trigger notifications (replaces existing if set, use null to remove)"
+                  }
+                },
+                "required": ["youtube_channels", "trigger_callback_url"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Listeners added successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": ["ok"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      }
+    },
+    "/agent/{agent_id}/triggers/{trigger_id}/remove_listeners": {
+      "post": {
+        "summary": "Remove YouTube channel listeners from specific trigger",
+        "description": "Remove YouTube channels from a specific trigger. Returns 404 if the trigger doesn't exist.",
+        "operationId": "removeYoutubeListenersFromTrigger",
+        "tags": ["Triggers"],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the agent",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "trigger_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the trigger",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "youtube_channels": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Array of YouTube channel IDs or URLs to stop monitoring"
+                  }
+                },
+                "required": ["youtube_channels"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Listeners removed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": ["ok"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+        }
+      }
+    }
+  },
+    "/agent/{agent_id}/triggers/{trigger_id}/update": {
+      "post": {
+        "summary": "Update trigger configuration",
+        "description": "Update the callback URL for a specific trigger. Returns 404 if the trigger doesn't exist.",
+        "operationId": "updateTrigger",
+        "tags": ["Triggers"],
+        "parameters": [
+          {
+            "name": "agent_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the agent",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "trigger_id",
+            "in": "path",
+            "required": true,
+            "description": "The ID of the trigger",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "trigger_callback_url": {
+                    "type": ["string", "null"],
+                    "description": "Webhook URL for trigger notifications (use null to remove)"
+                  }
+                },
+                "required": ["trigger_callback_url"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trigger updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": ["ok"]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequestError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
           }
         }
       }
@@ -154,55 +622,240 @@
   },
   "components": {
     "schemas": {
-      "Plant": {
-        "required": [
-          "name"
-        ],
+      "AgentRunStatus": {
         "type": "object",
         "properties": {
-          "name": {
-            "description": "The name of the plant",
-            "type": "string"
+          "agent_id": {
+            "type": "string",
+            "description": "ID of the agent that was run"
           },
-          "tag": {
-            "description": "Tag to specify the type",
-            "type": "string"
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the agent run started"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["running", "completed", "failed"],
+            "description": "Current status of the agent run"
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VideoInput"
+            },
+            "description": "Array of input videos"
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentOutput"
+            },
+            "description": "Array of output videos"
           }
         }
       },
-      "NewPlant": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Plant"
+      "AgentOutput": {
+        "type": "object",
+        "properties": {
+          "video_url": {
+            "type": "string",
+            "description": "URL to download the output video"
           },
-          {
-            "required": [
-              "id"
-            ],
+          "thumbnail_url": {
+            "type": "string",
+            "description": "URL for the video thumbnail"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this output was completed"
+          }
+        }
+      },
+      "Trigger": {
             "type": "object",
             "properties": {
               "id": {
-                "description": "Identification number of the plant",
-                "type": "integer",
-                "format": "int64"
+            "type": "string",
+            "description": "Unique identifier for the trigger"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["youtube"],
+            "description": "Type of trigger"
+          },
+          "youtube_channels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of YouTube channel URLs (only for YouTube triggers)"
+          },
+          "callback_url": {
+            "type": "string",
+            "description": "Webhook URL for trigger notifications"
+          }
+        }
+      },
+      "WebhookPayload": {
+        "type": "object",
+        "properties": {
+          "flag": {
+            "type": "string",
+            "enum": ["RUN_STARTED", "RUN_FINISHED"],
+            "description": "Event type"
+          },
+          "agent_id": {
+            "type": "string",
+            "description": "ID of the agent"
+          },
+          "run_id": {
+            "type": "string",
+            "description": "ID of the agent run"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["running", "completed", "failed"],
+            "description": "Current status"
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VideoInput"
+            },
+            "description": "Input videos that were processed"
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "video_url": {
+                  "type": "string"
+                },
+                "thumbnail_url": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Output videos (only present when status is completed)"
+          },
+          "triggered_by": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "ID of the trigger"
+              },
+              "type": {
+                "type": "string",
+                "enum": ["youtube"],
+                "description": "Type of trigger"
+              },
+              "youtube": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "YouTube video ID"
+                  },
+                  "channel": {
+                    "type": "string",
+                    "description": "YouTube channel ID"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "YouTube video title"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "YouTube video URL"
+                  }
+                },
+                "description": "YouTube-specific metadata"
+              }
+            },
+            "description": "Only present for triggered runs"
+          }
+        }
+      },
+      "VideoInput": {
+        "type": "object",
+        "properties": {
+          "video_id": {
+            "type": "string",
+            "description": "ID of the input video"
+          },
+          "video_url": {
+            "type": "string",
+            "description": "URL of the input video"
+          },
+          "thumbnail_url": {
+            "type": "string",
+            "description": "URL of the input video thumbnail"
+          }
+        }
+      }
+    },
+    "responses": {
+      "UnauthorizedError": {
+        "description": "Authentication failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "invalid_api_key"
+                },
+                "detail": {
+                  "type": "string",
+                  "example": "Invalid or missing API key"
+                }
               }
             }
           }
-        ]
+        }
       },
-      "Error": {
-        "required": [
-          "error",
-          "message"
-        ],
+      "BadRequestError": {
+        "description": "Invalid request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "example": "validation_error"
+                },
+                "detail": {
+                  "type": "string",
+                  "example": "Missing required field: video_id"
+                }
+              }
+            }
+          }
+        }
+      },
+      "NotFoundError": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": {
         "type": "object",
         "properties": {
           "error": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "message": {
-            "type": "string"
+                  "type": "string",
+                  "example": "not_found"
+                },
+                "detail": {
+                  "type": "string",
+                  "example": "Agent not found"
+                }
+              }
+            }
           }
         }
       }
@@ -210,7 +863,14 @@
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
-        "scheme": "bearer"
+        "scheme": "bearer",
+        "description": "Use your API key prefixed with 'Bearer'"
+      },
+      "apiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Use your API key in the X-API-Key header"
       }
     }
   }

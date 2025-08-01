@@ -1,7 +1,13 @@
 ---
 title: "API Overview"
-description: "Authentication, rate limits and conventions for Mosaic's REST API."
+description: "Authentication and conventions for Mosaic's REST API."
 ---
+
+<Warning>
+**⚠️ PREVIEW DOCUMENTATION**
+
+This documentation describes the **new Mosaic API architecture** that will be deployed soon. These endpoints are not yet available in production.
+</Warning>
 
 ## Overview
 
@@ -9,45 +15,36 @@ Mosaic's REST API allows you to kick off professional-grade video editing workfl
 
 ### Typical flow
 
-1. **Upload a video** – Get a signed URL and PUT the bytes (`/video/get-upload-url`, `/video/finalize-upload`).
-2. **Run an agent** – Call `/run-agent` with the `file_id` you just created.
-3. **Track progress** – Poll `/get-agent-run-simple/{id}` or subscribe to a webhook.
-4. **Download outputs** – Fetch signed URLs via `/get-agent-run-outputs/{id}`.
+1. **Upload a video** – Get a signed URL and upload the bytes (`/videos/get_upload_url`, `/videos/finalize_upload`).
+2. **Run an agent** – Call `/agent/[agent_id]/run` with the video IDs.
+3. **Track progress** – Poll `/agent_run/[run_id]` or subscribe to a webhook.
+4. **Download outputs** – The outputs are included in the agent run status response.
 
-Grab the full walk-through in the [Quickstart](/quickstart).
+Explore each endpoint category in the sections below.
 
 ## Authentication
 
-Mosaic supports two flavours of authentication:
-
-### 1. API Keys (Production traffic)
-
-Use an API key **prefixed `mk_`** for all operational endpoints (`/run-agent`, polling status, downloading outputs etc.).
+Use an API key **prefixed `mk_`** for all API endpoints.
 
 ```bash
-# Bearer header
+# Bearer header (recommended)
 curl -H "Authorization: Bearer mk_your_key" \
      -H "Content-Type: application/json" \
-     https://api.usemosaic.ai/api/run-agent
+     https://api.usemosaic.ai/agent/[agent_id]/run
 
 # X-API-Key header (alternative)
 curl -H "X-API-Key: mk_your_key" \
      -H "Content-Type: application/json" \
-     https://api.usemosaic.ai/api/run-agent
+     https://api.usemosaic.ai/agent/[agent_id]/run
 ```
 
-### 2. Session Tokens (Developer Portal)
+API keys can be created and managed in your [Mosaic dashboard](https://app.usemosaic.ai).
 
-When you log in to the Mosaic dashboard you receive a short-lived JWT issued by Supabase. Use this to manage API keys and check your credit balance under the `/api/dev` namespace.
+### Webhook Authentication
 
-## Rate Limiting & Quotas
+Webhook requests from Mosaic include an `X-Webhook-Secret` header for verification. Always validate this secret before processing webhook payloads. See the [Webhooks](/overview/webhooks) documentation for details.
 
-| Plan | Concurrent Runs | Upload Size | Free Credits |
-| --- | --- | --- | --- |
-| Pro | 10 | 10 GiB | 20 000 |
-| Enterprise | custom | custom | custom |
 
-*Additional* request-per-minute limits only apply to developer-portal endpoints.
 
 ## Error Handling
 
@@ -55,8 +52,8 @@ Responses use conventional HTTP status codes. On errors the body contains a mach
 
 ```json
 {
-  "detail": "Too many concurrent runs",
-  "error": "concurrent_agent_limit"
+  "detail": "Request failed",
+  "error": "request_error"
 }
 ```
 
@@ -64,15 +61,14 @@ Responses use conventional HTTP status codes. On errors the body contains a mach
 | --- | --- | --- |
 | 400 | validation_error | Malformed JSON or missing field |
 | 401 | invalid_api_key | Key revoked / wrong value |
-| 403 | concurrent_agent_limit | > 10 running agents (Free plan) |
-| 403 | insufficient_credits | Balance too low |
+| 403 | forbidden | Access denied / insufficient permissions |
 | 404 | not_found | Unknown ID |
 | 422 | parameter_out_of_range | Field outside validation bounds |
-| 429 | rate_limit | > 120 requests / min to `/api/dev/*` |
+| 429 | rate_limit | Too many requests |
 | 500 | internal_server_error | Unexpected exception |
 
 ## Base URL
 
 ```text
-https://api.usemosaic.ai/api
+https://api.usemosaic.ai
 ```

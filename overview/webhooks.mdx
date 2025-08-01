@@ -1,66 +1,305 @@
 ---
 title: "Webhooks"
-description: "Receive real-time notifications when an agent run completes or fails."
+description: "Receive real-time notifications for agent runs and triggers"
 ---
 
-Configure a webhook URL on any API key (via the dashboard or `/dev/keys` endpoints) and Mosaic will POST a JSON payload every time a run finishes.
+<Warning>
+This documentation describes endpoints that are not yet deployed. They will be available soon.
+</Warning>
 
-Mosaic signs each request so you can verify authenticity.
+## Overview
 
----
-
-## Signature Scheme
-
-```text
-X-Mosaic-Signature: t=1716912345,v1=af319…sha256
-```
-
-The header contains a Unix timestamp (`t`) and a HMAC-SHA256 signature (`v1`). Compute the digest locally and compare using constant-time equality.
-
-```python
-import hmac, hashlib, time
-
-secret = b"mk_your_api_key"  # yes, the same key value
-stamp  = header_ts  # integer
-msg    = f"{stamp}.".encode() + payload_bytes
-expected = hmac.new(secret, msg, hashlib.sha256).hexdigest()
-```
-
-Reject the request if
-1. The computed signature does not match.
-2. The timestamp is more than 5 minutes from current time.
+Mosaic supports webhooks for real-time notifications about your agent runs. Configure webhook URLs when running agents or setting up triggers to receive updates without polling.
 
 ---
 
-## Events
+## Agent Run Webhooks
 
-### agent_run.completed
+When you provide a `callback_url` in the agent run request, Mosaic will send POST requests to notify you of status changes.
+
+### Webhook Events
+
+Mosaic sends two types of events during an agent run:
+
+| Event | Description | When Sent |
+| --- | --- | --- |
+| RUN_STARTED | Agent has begun processing | Immediately after run starts |
+| RUN_FINISHED | Processing complete | When run succeeds or fails |
+
+### Webhook Payload
+
+The webhook payload format is the same for both manual API runs and triggered runs:
 
 ```json
 {
-  "event": "agent_run.completed",
-  "agent_run_id": "run_uuid",
-  "status": "success",
+  "flag": "RUN_FINISHED",
+  "agent_id": "123e4567-e89b-12d3-a456-789012345678",
+  "run_id": "7f8d9c2b-4a6e-8b3f-1d5c-9e2f3a4b5c6d",
+  "status": "completed",
+  "inputs": [
+    {
+      "video_id": "550e8400-e29b-41d4-a716-446655440000",
+      "video_url": "https://storage.googleapis.com/mosaic-inputs/input.mp4",
+      "thumbnail_url": "https://storage.googleapis.com/mosaic-inputs/thumb.jpg"
+    }
+  ],
   "outputs": [
     {
-      "node_id": "node_uuid",
-      "file_id": "file_uuid",
-      "download_url": "https://signed-url",
-      "thumbnail_url": "https://signed-url"
+      "video_url": "https://storage.googleapis.com/mosaic-outputs/output.mp4",
+      "thumbnail_url": "https://storage.googleapis.com/mosaic-thumbnails/thumb.jpg"
     }
-  ]
+  ],
+  "triggered_by": {  // Only present for triggered runs
+    "id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f",
+    "type": "youtube",
+    "youtube": {
+      "id": "dQw4w9WgXcQ",
+      "channel": "UCxxxxxxxxxxxxxx",
+      "title": "Never Gonna Give You Up",
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    }
+  }
 }
 ```
 
-### agent_run.failed
+### Payload Fields
 
-```json
-{
-  "event": "agent_run.failed",
-  "agent_run_id": "run_uuid",
-  "status": "failed",
-  "error_message": "Error description"
-}
+| Field | Type | Description |
+| --- | --- | --- |
+| flag | string | Event type: `RUN_STARTED` or `RUN_FINISHED` |
+| agent_id | string | ID of the agent that was run |
+| run_id | string | Unique identifier for this run (internally: agent_state) |
+| status | string | Current status: `running`, `completed`, or `failed` |
+| inputs | array | Input videos that were processed |
+| inputs[].video_id | string | ID of the input video |
+| inputs[].video_url | string | URL of the input video |
+| inputs[].thumbnail_url | string | URL of the input video thumbnail |
+| outputs | array | Output videos (only present when status is `completed`) |
+| outputs[].video_url | string | URL of the output video |
+| outputs[].thumbnail_url | string | URL of the output video thumbnail |
+| triggered_by | object | Only present for triggered runs (not manual API runs) |
+| triggered_by.id | string | ID of the trigger |
+| triggered_by.type | string | Type of trigger (e.g., `youtube`) |
+| triggered_by.youtube | object | YouTube-specific metadata (when type is `youtube`) |
+| triggered_by.youtube.id | string | YouTube video ID |
+| triggered_by.youtube.channel | string | YouTube channel ID |
+| triggered_by.youtube.title | string | Title of the YouTube video |
+| triggered_by.youtube.url | string | URL of the YouTube video |
+
+---
+
+## Webhook Security
+
+### Webhook Secret Verification
+
+Every webhook request from Mosaic includes a secret key in the headers to verify authenticity:
+
+```
+X-Webhook-Secret: your_webhook_secret
 ```
 
-> **Retry policy**: Mosaic retries failed deliveries up to 5 times with exponential back-off (1 → 16 minutes). 
+Always validate this secret before processing the webhook payload:
+
+```python
+# Example verification
+webhook_secret = request.headers.get('X-Webhook-Secret')
+expected_secret = os.environ.get('MOSAIC_WEBHOOK_SECRET')
+
+if webhook_secret != expected_secret:
+    return {"error": "Invalid webhook secret"}, 401
+```
+
+<Warning>
+Never expose your webhook secret in client-side code or public repositories. Treat it as a password.
+</Warning>
+
+### Security Best Practices
+
+1. **Always Verify the Secret**: Never process webhooks without validating the `X-Webhook-Secret` header
+2. **Use HTTPS**: Only use HTTPS endpoints for webhooks to prevent secret interception
+3. **Store Secrets Securely**: Use environment variables or a secure key management system
+4. **Handle Duplicates**: Implement idempotency to handle potential duplicate webhooks
+5. **Log Failed Attempts**: Monitor and log invalid webhook requests for security auditing
+
+---
+
+## Setting Up Webhooks
+
+### For Agent Runs
+
+Include the `callback_url` when starting an agent run:
+
+```bash
+curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/run" \
+  -H "Authorization: Bearer mk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_ids": ["550e8400-e29b-41d4-a716-446655440000"],
+    "callback_url": "https://your-app.com/webhooks/mosaic/abc123xyz"
+  }'
+```
+
+### For Triggers
+
+Configure webhooks when setting up triggers to be notified of automatic runs:
+
+```bash
+curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/lowest_youtube_id/add_listeners" \
+  -H "Authorization: Bearer mk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "youtube_channels": ["UCxxxxxxxxxxxxxx"],
+    "trigger_callback_url": "https://your-app.com/webhooks/triggers/def456uvw"
+  }'
+```
+
+---
+
+## Example Webhook Handler
+
+Here's a simple webhook handler in Python using Flask:
+
+```python
+from flask import Flask, request, jsonify
+import logging
+import os
+
+app = Flask(__name__)
+logger = logging.getLogger(__name__)
+
+MOSAIC_WEBHOOK_SECRET = os.environ.get('MOSAIC_WEBHOOK_SECRET')
+
+@app.route('/webhooks/mosaic/<token>', methods=['POST'])
+def handle_mosaic_webhook(token):
+    # Verify webhook secret from Mosaic
+    webhook_secret = request.headers.get('X-Webhook-Secret')
+    if webhook_secret != MOSAIC_WEBHOOK_SECRET:
+        logger.warning("Invalid webhook secret received")
+        return jsonify({"error": "Invalid webhook secret"}), 401
+    
+    # Verify URL token (optional additional security)
+    if token != os.environ.get('URL_TOKEN'):
+        return jsonify({"error": "Invalid token"}), 401
+    
+    # Parse webhook data
+    data = request.json
+    flag = data.get('flag')
+    run_id = data.get('run_id')
+    status = data.get('status')
+    
+    # Handle different events
+    if flag == 'RUN_STARTED':
+        inputs = data.get('inputs', [])
+        triggered_by = data.get('triggered_by')
+        
+        logger.info(f"Agent run {run_id} started with {len(inputs)} inputs")
+        
+        # Check if this was triggered by YouTube
+        if triggered_by and triggered_by.get('type') == 'youtube':
+            youtube_info = triggered_by.get('youtube', {})
+            logger.info(f"Triggered by YouTube video: {youtube_info.get('title')}")
+        
+    elif flag == 'RUN_FINISHED':
+        if status == 'completed':
+            inputs = data.get('inputs', [])
+            outputs = data.get('outputs', [])
+            
+            logger.info(f"Agent run {run_id} completed")
+            logger.info(f"Processed {len(inputs)} inputs, generated {len(outputs)} outputs")
+            
+            # Process outputs
+            for output in outputs:
+                video_url = output.get('video_url')
+                thumbnail_url = output.get('thumbnail_url')
+                # Download, store, or process the outputs
+                
+        elif status == 'failed':
+            logger.error(f"Agent run {run_id} failed")
+            # Handle failure, retry, notify, etc.
+    
+    # Always return 200 to acknowledge receipt
+    return jsonify({"received": True}), 200
+
+if __name__ == '__main__':
+    app.run(port=3000)
+```
+
+---
+
+## Webhook Reliability
+
+### Retry Policy
+
+Mosaic implements automatic retries for failed webhook deliveries:
+
+- **Retry attempts**: Up to 5 times
+- **Backoff strategy**: Exponential backoff (1, 2, 4, 8, 16 minutes)
+- **Timeout**: 30 seconds per request
+- **Success criteria**: HTTP 2xx response
+
+### Handling Failures
+
+If your endpoint is temporarily unavailable:
+
+1. Mosaic will retry with exponential backoff
+2. You can still poll the `/agent_run/[run_id]` endpoint
+3. Consider implementing a webhook replay system
+
+---
+
+## Testing Webhooks
+
+### Using ngrok for Local Development
+
+```bash
+# Install ngrok
+brew install ngrok  # macOS
+# or download from https://ngrok.com
+
+# Start your local webhook server
+python webhook_handler.py
+
+# In another terminal, expose it to the internet
+ngrok http 3000
+
+# Use the ngrok URL for testing
+# https://abc123.ngrok.io/webhooks/mosaic/your-token
+```
+
+### Webhook Testing Service
+
+You can use [webhook.site](https://webhook.site) to inspect webhook payloads during development.
+
+---
+
+## Common Issues
+
+### Webhook Not Received
+
+1. **Check URL**: Ensure the URL is publicly accessible
+2. **Check HTTPS**: Some environments require HTTPS
+3. **Check Response**: Your handler must return a 2xx status
+4. **Check Logs**: Look for retry attempts in your server logs
+
+### Duplicate Webhooks
+
+Implement idempotency using the `run_id`:
+
+```python
+processed_runs = set()
+
+def handle_webhook(data):
+    run_id = data['run_id']
+    if run_id in processed_runs:
+        return  # Already processed
+    
+    processed_runs.add(run_id)
+    # Process webhook...
+```
+
+---
+
+## Next Steps
+
+- Review [agent operations](/overview/agent-operations) for the complete workflow
+- Set up [triggers](/overview/triggers) for automatic processing

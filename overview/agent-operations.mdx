@@ -1,172 +1,197 @@
 ---
 title: "Agent Operations"
-description: "Run an agent, track progress and download outputs."
+description: "Run AI-powered video editing agents and track their progress"
 ---
 
-## GET /get-user-agents-simple
+<Warning>
+This documentation describes endpoints that are not yet deployed. They will be available soon.
+</Warning>
 
-Return a lightweight list of **your own agents** – handy for populating dropdowns or showing recent creations in a UI.
+## Overview
 
-| Query | Type | Default | Notes |
-| --- | --- | --- | --- |
-| limit | integer (1-100) | all | Caps the number of agents returned (newest first) |
+Agents are pre-built workflows that process your videos with AI-powered editing capabilities. Each agent is designed for specific tasks like generating captions, creating shorts, or enhancing audio.
 
-Authentication is identical to other operational endpoints:
-* Bearer API key (`mk_…`) or `X-API-Key` header
-* Supabase session JWT for the Mosaic dashboard
+### Creating Agents
 
-### Example – list the five most-recent agents
-```bash
-curl -s "https://api.usemosaic.ai/api/get-user-agents-simple?limit=5" \
-     -H "Authorization: Bearer $MOSAIC_API_KEY"
-```
-
-### Response
-```json
-{
-  "agents": [
-    {
-      "id": "agent-uuid",
-      "name": "My Caption Preset",
-      "description": "Animated captions in brand colours",
-      "created_at": "2025-06-01T12:00:00Z"
-    }
-  ]
-}
-```
-
-> The endpoint returns only **your** agents; there is no global marketplace yet. Results are sorted by `created_at` descending.
+First, create an agent on [app.usemosaic.ai](https://app.usemosaic.ai). Once created, you can find the agent ID in the URL when viewing your agent.
 
 ---
 
-## POST /run-agent
+## POST /agent/[agent_id]/run
 
-Execute an agent workflow on an uploaded video file.
-
-<Tabs>
-  <Tab title="Option A: Auto-select agent">
-    Let Mosaic choose an agent based on your prompt:
-    ```bash
-    curl -X POST "https://api.usemosaic.ai/api/run-agent" \
-      -H "Authorization: Bearer mk_your_api_key" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "file_id": "550e8400-e29b-41d4-a716-446655440000",  # or youtube_<videoId>
-        "prompt": "Generate a summary of the video"
-      }'
-    ```
-  </Tab>
-  <Tab title="Option B: Specific agent">
-    Target a specific agent by ID:
-    ```bash
-    curl -X POST "https://api.usemosaic.ai/api/run-agent" \
-      -H "Authorization: Bearer mk_your_api_key" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "agent_id": "22aa8e28-6178-4587-8cce-9d8cdb62a32c",
-        "file_id": "550e8400-e29b-41d4-a716-446655440000",  # or youtube_<videoId>
-        "auto": true
-      }'
-    ```
-  </Tab>
-</Tabs>
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| file_id | string (`uuid-v4` **or** `youtube_<videoId>`) | ✅ | Upload UUID **or** YouTube video ID prefixed with `youtube_` |
-| agent_id | string (UUID) | ⚠️ | ID of the agent to run (mutually exclusive with `prompt`) |
-| prompt | string | ⚠️ | Natural-language instruction; Mosaic picks an agent & parameters (mutually exclusive with `agent_id`) |
-| parameters | object | | Key-value overrides for agent fields |
-| auto | boolean | | Let Mosaic choose optimal parameters (only used with `agent_id`) |
-
-<Note>
-Use either `agent_id` OR `prompt`, not both. To process a public YouTube video without uploading, pass a `file_id` like `youtube_dQw4w9WgXcQ`.
-</Note>
-
-### Response
-
-```json
-{
-  "agent_run_id": "run_uuid",
-  "project_id": "project_uuid",
-  "agent_group_id": "group_uuid"
-}
-```
-
----
-
-## GET /get-agent-run/{agent_run_id}
-
-Get full run details including the workflow graph.
-
-### Response
-```json
-{
-  "id": "run_uuid",
-  "status": "running | completed | failed",
-  "graph": {
-    "nodes": [...],
-    "edges": [...]
-  }
-}
-```
-
----
-
-## GET /get-agent-run-simple/{agent_run_id}
-
-Returns the same high-level metadata without the heavy graph payload. Poll this endpoint every ~5 seconds for updates on agent runs.
-
----
-
-## GET /get-agent-run-outputs/{agent_run_id}
-
-Retrieve signed download URLs for all outputs of the run.
-
-```json
-{
-  "outputs": [
-    {
-      "node_id": "node_uuid",
-      "file_id": "file_uuid",
-      "download_url": "https://...",
-      "thumbnail_url": "https://...",
-      "duration_ms": 30000,
-      "file_size": 1048576,
-      "status": "success"
-    }
-  ]
-}
-```
-
----
-
-## POST /retry-agent-run-node/{agent_run_node_id}
-
-Retry a specific **failed** node within an agent run instead of re-running the entire workflow.
-
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| agent_run_node_id (path) | UUID | ✅ | ID of the node to retry. Must currently have `status=failed`. |
-
-Authentication: same as other operational endpoints – Bearer API key (`mk_…`) **or** Supabase session. Anonymous requests are rejected with `401`.
+Execute an agent workflow on one or more uploaded videos.
 
 ### Request
-```http
-POST /retry-agent-run-node/{agent_run_node_id}
-Authorization: Bearer mk_live_xxx…
-Content-Type: application/json
-
-{}
+```bash
+curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/run" \
+  -H "Authorization: Bearer mk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_ids": ["550e8400-e29b-41d4-a716-446655440000"],
+    "callback_url": "https://your-app.com/webhooks/mosaic"
+  }'
 ```
 
-### Successful response
+### Parameters
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| video_ids | string[] | ✅ | Array of video IDs to process |
+| callback_url | string | | Optional webhook URL for status updates |
+
+### Response
 ```json
 {
-  "success": true,
-  "agent_run_node_id": "ab12cdef-3456-7890-abcd-ef1234567890",
-  "status": "initiated",
-  "message": "Agent run node retry initiated"
+  "run_id": "7f8d9c2b-4a6e-8b3f-1d5c-9e2f3a4b5c6d"
 }
 ```
-*HTTP 200* — the node (and all downstream nodes) are reset to `not_started`; the parent run switches back to `
+
+The `run_id` is used to track the progress of your agent run.
+
+---
+
+## GET /agent_run/[run_id]
+
+Poll this endpoint to check the status of your agent run and retrieve outputs.
+
+### Request
+```bash
+curl -X GET "https://api.usemosaic.ai/agent_run/[run_id]" \
+  -H "Authorization: Bearer mk_your_api_key"
+```
+
+### Response
+```json
+{
+  "agent_id": "123e4567-e89b-12d3-a456-789012345678",
+  "started_at": "2025-01-10T14:30:00Z",
+  "status": "completed",
+  "inputs": [
+    {
+      "video_id": "550e8400-e29b-41d4-a716-446655440000",
+      "video_url": "https://storage.googleapis.com/mosaic-inputs/...",
+      "thumbnail_url": "https://storage.googleapis.com/mosaic-inputs/..."
+    }
+  ],
+  "outputs": [
+    {
+      "video_url": "https://storage.googleapis.com/mosaic-outputs/...",
+      "thumbnail_url": "https://storage.googleapis.com/mosaic-thumbnails/...",
+      "completed_at": "2025-01-10T14:35:30Z"
+    }
+  ]
+}
+```
+
+### Status Values
+
+| Status | Description |
+| --- | --- |
+| running | Agent is processing your videos |
+| completed | Processing finished successfully |
+| failed | An error occurred during processing |
+
+---
+
+## Webhook Callbacks
+
+If you provide a `callback_url` when running an agent, Mosaic will send POST requests to notify you of status changes.
+
+### Webhook Payload
+
+```json
+{
+  "flag": "RUN_FINISHED",
+  "agent_id": "123e4567-e89b-12d3-a456-789012345678",
+  "run_id": "7f8d9c2b-4a6e-8b3f-1d5c-9e2f3a4b5c6d",
+  "status": "completed",
+  "inputs": [
+    {
+      "video_id": "550e8400-e29b-41d4-a716-446655440000",
+      "video_url": "https://storage.googleapis.com/mosaic-inputs/...",
+      "thumbnail_url": "https://storage.googleapis.com/mosaic-inputs/..."
+    }
+  ],
+  "outputs": [
+    {
+      "video_url": "https://storage.googleapis.com/mosaic-outputs/...",
+      "thumbnail_url": "https://storage.googleapis.com/mosaic-thumbnails/..."
+    }
+  ]
+}
+```
+
+### Event Flags
+
+| Flag | Description |
+| --- | --- |
+| RUN_STARTED | Sent when the agent begins processing |
+| RUN_FINISHED | Sent when processing completes (success or failure) |
+
+<Note>
+For agent runs triggered by external events (e.g., YouTube uploads), the webhook payload will include an additional `triggered_by` field. See [Triggers](/overview/triggers) for details.
+</Note>
+
+---
+
+## Complete Example
+
+Here's a complete workflow from video upload to agent processing:
+
+```python
+import requests
+import time
+
+API_KEY = "mk_your_api_key"
+BASE_URL = "https://api.usemosaic.ai"
+headers = {"Authorization": f"Bearer {API_KEY}"}
+
+# Step 1: Get upload URL
+response = requests.get(f"{BASE_URL}/videos/get_upload_url", headers=headers)
+upload_data = response.json()
+
+# Step 2: Upload video
+with open("my-video.mp4", "rb") as video_file:
+    requests.put(upload_data["upload_url"], data=video_file, 
+                headers={"Content-Type": "video/mp4"})
+
+# Step 3: Finalize upload
+requests.post(f"{BASE_URL}/videos/finalize_upload", 
+             headers={**headers, "Content-Type": "application/json"},
+             json={"video_id": upload_data["video_id"]})
+
+# Step 4: Run agent
+agent_id = "{agent_id}"
+run_response = requests.post(
+    f"{BASE_URL}/agent/{agent_id}/run",
+    headers={**headers, "Content-Type": "application/json"},
+    json={"video_ids": [upload_data["video_id"]]}
+)
+run_id = run_response.json()["run_id"]
+
+# Step 5: Poll for status
+while True:
+    status_response = requests.get(f"{BASE_URL}/agent_run/{run_id}", headers=headers)
+    status_data = status_response.json()
+    
+    if status_data["status"] in ["completed", "failed"]:
+        print(f"Agent run {status_data['status']}")
+        if status_data["status"] == "completed":
+            for output in status_data["outputs"]:
+                print(f"Output video: {output['video_url']}")
+        break
+    
+    time.sleep(5)  # Poll every 5 seconds
+```
+
+## Best Practices
+
+1. **Batch Processing**: Process multiple videos in a single agent run for efficiency
+2. **Webhooks vs Polling**: Use webhooks for production systems to avoid unnecessary API calls
+3. **Error Handling**: Always handle the `failed` status and implement retry logic
+4. **Agent Selection**: Choose the right agent for your use case - visit the dashboard to explore available agents
+
+## Next Steps
+
+- [Set up triggers](/overview/triggers) to automatically run agents on new videos
+- [Configure webhooks](/overview/webhooks) for real-time notifications

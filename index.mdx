@@ -1,41 +1,64 @@
 ---
-title: "Mosaic API Overview"
-description: "Programmatic video editing workflows powered by AI."
+title: "Mosaic API Documentation"
+description: "API reference for Mosaic's video editing workflows"
 ---
+
+<Warning>
+**⚠️ PREVIEW DOCUMENTATION**
+
+This documentation describes the **new Mosaic API architecture** that will be deployed soon. These endpoints are not yet available in production.
+</Warning>
 
 # Mosaic API
 
-Mosaic lets you automate professional-grade video editing with a single REST call. Run pre-built "Agents" – AI workflows that do everything from audio enhancement to automatic cropping and animated captions – then download the finished clip.
-
-<CardGroup cols={2}>
-  <Card title="5-Minute Quickstart" icon="rocket" href="/quickstart">
-    Get set up, upload a video and run your first agent.
-  </Card>
-  <Card title="Full API Reference" icon="code" href="/api-reference/introduction">
-    Endpoints, request / response shapes and webhook events.
-  </Card>
-</CardGroup>
+Mosaic provides a powerful API for automating professional-grade video editing with AI-powered agents. Upload videos, run pre-built workflows, and receive polished outputs programmatically.
 
 ## Base URL
 
 ```text
-https://api.usemosaic.ai/api/
+https://api.usemosaic.ai
 ```
 
 ## Core Concepts
 
 ### Agent
-A saved workflow graph that can be executed via `/run-agent`. Mosaic ships with a library of ready-made agents and more are added every month.
+A pre-built video editing workflow that can be executed via the API. Create and configure agents at [app.usemosaic.ai](https://app.usemosaic.ai).
 
 ### Agent Run
-An execution instance of an agent. Tracks progress (`queued → running → completed|failed`) and stores per-node metadata.
+An execution instance of an agent that processes your videos. Track progress and retrieve outputs through the run ID.
 
-### File ID
-Every uploaded asset receives a UUID (v4). Use this `file_id` when kicking off agents, or pass a local file in by using our signed url upload method.
+### Video Upload
+A 3-step process using pre-signed URLs for efficient, direct-to-cloud uploads.
 
-### Credits
-Billing is usage-based and function the same as the web UI. Failed runs automatically refund any unspent credits.
+### Triggers
+Automated agent execution based on external events (e.g., new YouTube videos).
 
----
+## API Overview
 
-Looking for a paste-and-go example? Jump to the Quickstart or dive straight into the API reference.
+<CardGroup cols={2}>
+  <Card title="Video Upload" icon="upload" href="/overview/video-upload">
+    3-step process for uploading videos
+  </Card>
+  <Card title="Agent Operations" icon="robot" href="/overview/agent-operations">
+    Run agents and track their progress
+  </Card>
+  <Card title="Triggers" icon="bolt" href="/overview/triggers">
+    Automate agents with YouTube monitoring
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/overview/webhooks">
+    Receive real-time status updates
+  </Card>
+</CardGroup>
+
+## Authentication
+
+All API requests require authentication using an API key prefixed with `mk_`.
+
+```bash
+curl -H "Authorization: Bearer mk_your_api_key" \
+     https://api.usemosaic.ai/agent/[agent_id]/run
+```
+
+## Next Steps
+
+Start with the [API Introduction](/overview/introduction) for authentication details and conventions, then explore each endpoint category.

@@ -11,36 +11,17 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "API Reference",
         "groups": [
-          {
-            "group": "Get Started",
-            "pages": [
-              "index",
-              "quickstart",
-              "quickstart_python",
-              "quickstart_typescript",
-              "mcp-setup"
-            ]
-          },
           {
             "group": "Overview",
             "pages": [
+              "index",
               "overview/introduction",
-              "overview/agent-operations",
               "overview/video-upload",
+              "overview/agent-operations",
+              "overview/triggers",
               "overview/webhooks"
-            ]
-          },
-          {
-            "group": "Example Apps",
-            "pages": [
-              "example-apps/overview",
-              "example-apps/google-drive-trigger",
-              "example-apps/dropbox-trigger",
-              "example-apps/mosaic-mcp-server",
-              "example-apps/create-shorts-web-app",
-              "example-apps/vercel-ai-sdk-example"
             ]
           }
         ]

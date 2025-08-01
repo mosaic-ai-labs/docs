@@ -1,63 +1,129 @@
 ---
 title: "Video Upload"
-description: "Upload large video files in two steps before running an agent."
+description: "Upload videos to Mosaic in three simple steps"
 ---
 
-Mosaic uses signed URLs so you can upload directly to cloud storage without routing bytes through our API servers.
+<Warning>
+This documentation describes endpoints that are not yet deployed. They will be available soon.
+</Warning>
+
+Mosaic uses a streamlined 3-step process for video uploads, allowing you to upload directly to cloud storage using pre-signed URLs.
+
+## Upload Process Overview
+
+1. **Get an upload URL** - Request a pre-signed URL from the API
+2. **Upload your video** - Send your video directly to the upload URL
+3. **Finalize the upload** - Confirm the upload and optionally organize into folders
 
 ---
 
-## POST /video/get-upload-url
+## Step 1: GET /videos/get_upload_url
 
-Returns a pre-signed URL.
+Request a pre-signed URL for uploading your video.
 
-| Field | Type | Required | Description |
-| --- | --- | --- | --- |
-| filename | string | ✅ | Original file name |
-| file_size | integer | ✅ | Size in bytes |
-| content_type | string | ✅ | MIME type, e.g. `video/mp4` |
-| project_id | string | | Session-auth only – override auto-created project |
-
-### Sample Request
+### Request
 ```bash
-curl -X POST "https://api.usemosaic.ai/api/video/get-upload-url" \
+curl -X GET "https://api.usemosaic.ai/videos/get_upload_url" \
+  -H "Authorization: Bearer mk_your_api_key"
+```
+
+### Response
+```json
+{
+  "video_id": "550e8400-e29b-41d4-a716-446655440000",
+  "upload_url": "https://storage.googleapis.com/mosaic-uploads/..."
+}
+```
+
+| Field | Type | Description |
+| --- | --- | --- |
+| video_id | string | Unique identifier for your video |
+| upload_url | string | Pre-signed URL for uploading (expires in 1 hour) |
+
+---
+
+## Step 2: Upload to the URL
+
+Upload your video file directly to the provided `upload_url` using a PUT request.
+
+```bash
+curl -X PUT "$UPLOAD_URL" \
+  -H "Content-Type: video/mp4" \
+  --data-binary @your-video.mp4
+```
+
+<Note>
+**Important**: 
+- The upload URL expires after 1 hour
+- Set the correct `Content-Type` header matching your video format
+</Note>
+
+---
+
+## Step 3: POST /videos/finalize_upload
+
+Finalize the upload to make your video available for processing.
+
+### Request
+```bash
+curl -X POST "https://api.usemosaic.ai/videos/finalize_upload" \
   -H "Authorization: Bearer mk_your_api_key" \
   -H "Content-Type: application/json" \
-  -d '{"filename":"video.mp4","file_size":1048576,"content_type":"video/mp4"}'
+  -d '{
+    "video_id": "550e8400-e29b-41d4-a716-446655440000",
+    "folder_path": "marketing/campaigns/2025"
+  }'
 ```
 
-### Sample Response
-```json
-{
-  "upload_url": "https://signed-gcs-url",
-  "video_id": "video_uuid",
-  "temp_path": "temp/path"
-}
-```
-
----
-
-## PUT {upload_url}
-
-Upload the bytes to the signed URL. Make sure to set the same `Content-Type` you passed in the previous call.
-
----
-
-## POST /video/finalize-upload/{video_id}
-
-Converts the temporary object into a permanent asset and returns a `file_uuid` to use with agents.
-
+### Request Body
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| skip_project_creation | boolean | | Session-auth only |
+| video_id | string | ✅ | The video ID from step 1 |
+| folder_path | string | | Optional folder path for organization |
 
-### Sample Response
+### Response
 ```json
 {
-  "file_uuid": "file_uuid",
-  "file_name": "video.mp4",
-  "url": "https://storage-url/video.mp4"
+  "status": "ok"
 }
 ```
 
-> **Retry-safe**: The `finalize-upload` endpoint is idempotent – calling it twice with the same `video_id` returns the same `file_uuid`. 
+---
+
+## Complete Example
+
+Here's a complete example using bash:
+
+```bash
+# Step 1: Get upload URL
+RESPONSE=$(curl -s -X GET "https://api.usemosaic.ai/videos/get_upload_url" \
+  -H "Authorization: Bearer $MOSAIC_API_KEY")
+
+VIDEO_ID=$(echo $RESPONSE | jq -r '.video_id')
+UPLOAD_URL=$(echo $RESPONSE | jq -r '.upload_url')
+
+# Step 2: Upload video
+curl -X PUT "$UPLOAD_URL" \
+  -H "Content-Type: video/mp4" \
+  --data-binary @my-video.mp4
+
+# Step 3: Finalize upload
+curl -X POST "https://api.usemosaic.ai/videos/finalize_upload" \
+  -H "Authorization: Bearer $MOSAIC_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"video_id\": \"$VIDEO_ID\"}"
+```
+
+## Best Practices
+
+1. **Error Handling**: Always check the response status before proceeding to the next step
+2. **Retry Logic**: Implement exponential backoff for network failures
+3. **Progress Tracking**: For large files, consider implementing upload progress monitoring
+4. **Folder Organization**: Use the `folder_path` parameter to keep your videos organized
+
+## What's Next?
+
+After successfully uploading your video, you can:
+- [Run an agent](/overview/agent-operations) to process your video
+- [Set up triggers](/overview/triggers) to automatically process new videos
+- [Configure webhooks](/overview/webhooks) to receive processing notifications
