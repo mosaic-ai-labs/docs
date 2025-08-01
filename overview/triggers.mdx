@@ -13,12 +13,9 @@ Triggers allow you to automatically run agents when new videos are uploaded to e
 
 When a trigger detects new content, it automatically starts an agent run with the new video, making it perfect for content creators who want to automate their video editing workflows.
 
-### Multiple Triggers
-
-On the agent canvas, you can configure multiple triggers for a single agent. Each trigger operates independently and can monitor different YouTube channels or have different callback URLs. This allows you to:
-- Monitor multiple YouTube channels with different configurations
-- Route webhooks to different endpoints based on the trigger
-- Organize your automation workflows more effectively
+<Note>
+Each agent supports one YouTube trigger that can monitor multiple channels.
+</Note>
 
 ---
 
@@ -28,7 +25,7 @@ Monitor YouTube channels and automatically process new videos as they're uploade
 
 ### GET /agent/[agent_id]/triggers
 
-Retrieve all triggers configured for an agent.
+Retrieve the YouTube trigger configured for an agent.
 
 ```bash
 curl -X GET "https://api.usemosaic.ai/agent/[agent_id]/triggers" \
@@ -37,36 +34,32 @@ curl -X GET "https://api.usemosaic.ai/agent/[agent_id]/triggers" \
 
 ### Response
 ```json
-[
-  {
-    "id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f",
-    "type": "youtube",
-    "youtube_channels": [
-      "https://www.youtube.com/channel/UCxxxxxx",
-      "https://www.youtube.com/@channelname"
-    ],
-    "callback_url": "https://your-app.com/webhooks/trigger"
-  }
-]
+{
+  "id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f",
+  "type": "youtube",
+  "youtube_channels": [
+    "https://www.youtube.com/channel/UCxxxxxx",
+    "https://www.youtube.com/@channelname"
+  ],
+  "callback_url": "https://your-app.com/webhooks/trigger"
+}
 ```
+
+Returns `null` if no trigger is configured.
 
 ---
 
 ## Managing YouTube Channels
 
-### Convenience Endpoints (Lowest ID)
+### POST /agent/[agent_id]/triggers/add_youtube_channels
 
-These endpoints automatically select the YouTube trigger with the lowest ID, making it easy to manage triggers without knowing specific trigger IDs.
-
-#### POST /agent/[agent_id]/triggers/lowest_youtube_id/add_listeners
-
-Add YouTube channels to monitor for new videos. This convenience endpoint:
-- Automatically selects the YouTube trigger with the lowest ID
+Add YouTube channels to monitor for new videos. This endpoint:
 - Creates a new trigger if none exist
+- Adds channels to the existing trigger if one already exists
 - Supports both channel IDs and channel URLs
 
 ```bash
-curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/lowest_youtube_id/add_listeners" \
+curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/add_youtube_channels" \
   -H "Authorization: Bearer mk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -91,68 +84,18 @@ curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/lowest_youtube_
 - Set `trigger_callback_url` to `null` to remove the webhook URL from the trigger
 </Note>
 
-#### POST /agent/[agent_id]/triggers/lowest_youtube_id/remove_listeners
+### POST /agent/[agent_id]/triggers/remove_youtube_channels
 
-Stop monitoring specific YouTube channels on the trigger with the lowest ID.
+Stop monitoring specific YouTube channels.
 
 ```bash
-curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/lowest_youtube_id/remove_listeners" \
+curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/remove_youtube_channels" \
   -H "Authorization: Bearer mk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
     "youtube_channels": ["UCxxxxxxxxxxxxxx"]
   }'
 ```
-
-### Specific Trigger Endpoints
-
-For more control, you can manage listeners on specific triggers using their trigger ID.
-
-#### POST /agent/[agent_id]/triggers/[trigger_id]/add_listeners
-
-Add YouTube channels to a specific trigger.
-
-```bash
-curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/[trigger_id]/add_listeners" \
-  -H "Authorization: Bearer mk_your_api_key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "youtube_channels": ["UCxxxxxxxxxxxxxx", "https://www.youtube.com/@channel"],
-    "trigger_callback_url": "https://your-app.com/webhooks/trigger"
-  }'
-```
-
-**Note**: Returns a 404 error if the trigger ID doesn't exist.
-
-#### POST /agent/[agent_id]/triggers/[trigger_id]/remove_listeners
-
-Remove YouTube channels from a specific trigger.
-
-```bash
-curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/[trigger_id]/remove_listeners" \
-  -H "Authorization: Bearer mk_your_api_key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "youtube_channels": ["UCxxxxxxxxxxxxxx"]
-  }'
-```
-
-**Note**: Returns a 404 error if the trigger ID doesn't exist.
-
-#### POST /agent/[agent_id]/triggers/[trigger_id]/update
-
-Update the callback URL for a specific trigger.
-
-```bash
-curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/[trigger_id]/update" \
-  -H "Authorization: Bearer mk_your_api_key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "trigger_callback_url": null  // Set to null to remove the callback URL
-  }'
-```
-
-**Note**: Returns a 404 error if the trigger ID doesn't exist.
 
 ---
 

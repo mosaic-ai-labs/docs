@@ -64,5 +64,9 @@
       "x": "https://x.com/usemosaic_ai",
       "linkedin": "https://www.linkedin.com/company/use-mosaic-ai/"
     }
+  },
+  "feedback": {
+    "enabled": true,
+    "thumbsRating": true
   }
 }

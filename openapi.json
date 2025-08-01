@@ -219,8 +219,8 @@
     },
     "/agent/{agent_id}/triggers": {
       "get": {
-        "summary": "Get agent triggers",
-        "description": "Retrieve all triggers configured for an agent",
+        "summary": "Get agent trigger",
+        "description": "Retrieve the YouTube trigger configured for an agent",
         "operationId": "getAgentTriggers",
         "tags": ["Triggers"],
         "parameters": [
@@ -240,10 +240,14 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Trigger"
-                  }
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Trigger"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               }
             }
@@ -257,10 +261,10 @@
         }
       }
     },
-    "/agent/{agent_id}/triggers/lowest_youtube_id/add_listeners": {
+    "/agent/{agent_id}/triggers/add_youtube_channels": {
       "post": {
         "summary": "Add YouTube channel listeners",
-        "description": "Add YouTube channels to monitor for new videos. Updates the trigger with the lowest ID or creates a new one if none exist.",
+        "description": "Add YouTube channels to monitor for new videos. Creates a trigger if none exist or adds to the existing trigger.",
         "operationId": "addYoutubeListeners",
         "tags": ["Triggers"],
         "parameters": [
@@ -327,7 +331,7 @@
           }
         }
       },
-    "/agent/{agent_id}/triggers/lowest_youtube_id/remove_listeners": {
+    "/agent/{agent_id}/triggers/remove_youtube_channels": {
       "post": {
         "summary": "Remove YouTube channel listeners",
         "description": "Remove YouTube channels from monitoring",
@@ -367,232 +371,6 @@
         "responses": {
           "200": {
             "description": "Listeners removed successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "enum": ["ok"]
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      }
-    },
-    "/agent/{agent_id}/triggers/{trigger_id}/add_listeners": {
-      "post": {
-        "summary": "Add YouTube channel listeners to specific trigger",
-        "description": "Add YouTube channels to a specific trigger. Returns 404 if the trigger doesn't exist.",
-        "operationId": "addYoutubeListenersToTrigger",
-        "tags": ["Triggers"],
-        "parameters": [
-          {
-            "name": "agent_id",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the agent",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "trigger_id",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the trigger",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "youtube_channels": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "description": "Array of YouTube channel IDs or URLs to monitor"
-                  },
-                  "trigger_callback_url": {
-                    "type": ["string", "null"],
-                    "description": "Webhook URL for trigger notifications (replaces existing if set, use null to remove)"
-                  }
-                },
-                "required": ["youtube_channels", "trigger_callback_url"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Listeners added successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "enum": ["ok"]
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          }
-        }
-      }
-    },
-    "/agent/{agent_id}/triggers/{trigger_id}/remove_listeners": {
-      "post": {
-        "summary": "Remove YouTube channel listeners from specific trigger",
-        "description": "Remove YouTube channels from a specific trigger. Returns 404 if the trigger doesn't exist.",
-        "operationId": "removeYoutubeListenersFromTrigger",
-        "tags": ["Triggers"],
-        "parameters": [
-          {
-            "name": "agent_id",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the agent",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "trigger_id",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the trigger",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "youtube_channels": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "description": "Array of YouTube channel IDs or URLs to stop monitoring"
-                  }
-                },
-                "required": ["youtube_channels"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Listeners removed successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "enum": ["ok"]
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequestError"
-          },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-        }
-      }
-    }
-  },
-    "/agent/{agent_id}/triggers/{trigger_id}/update": {
-      "post": {
-        "summary": "Update trigger configuration",
-        "description": "Update the callback URL for a specific trigger. Returns 404 if the trigger doesn't exist.",
-        "operationId": "updateTrigger",
-        "tags": ["Triggers"],
-        "parameters": [
-          {
-            "name": "agent_id",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the agent",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "trigger_id",
-            "in": "path",
-            "required": true,
-            "description": "The ID of the trigger",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "trigger_callback_url": {
-                    "type": ["string", "null"],
-                    "description": "Webhook URL for trigger notifications (use null to remove)"
-                  }
-                },
-                "required": ["trigger_callback_url"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Trigger updated successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -703,7 +481,7 @@
         "properties": {
           "flag": {
             "type": "string",
-            "enum": ["RUN_STARTED", "RUN_FINISHED"],
+            "enum": ["RUN_STARTED", "OUTPUT_FINISHED", "RUN_FINISHED"],
             "description": "Event type"
           },
           "agent_id": {
@@ -740,6 +518,30 @@
               }
             },
             "description": "Output videos (only present when status is completed)"
+          },
+          "output": {
+            "type": "object",
+            "properties": {
+              "video_url": {
+                "type": "string"
+              },
+              "thumbnail_url": {
+                "type": "string"
+              },
+              "completed_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "description": "Single output (only present in OUTPUT_FINISHED events)"
+          },
+          "outputs_completed": {
+            "type": "integer",
+            "description": "Number of outputs completed so far (OUTPUT_FINISHED only)"
+          },
+          "outputs_total": {
+            "type": "integer",
+            "description": "Total expected outputs (OUTPUT_FINISHED only)"
           },
           "triggered_by": {
             "type": "object",

@@ -19,12 +19,17 @@ When you provide a `callback_url` in the agent run request, Mosaic will send POS
 
 ### Webhook Events
 
-Mosaic sends two types of events during an agent run:
+Mosaic sends three types of events during an agent run:
 
 | Event | Description | When Sent |
 | --- | --- | --- |
 | RUN_STARTED | Agent has begun processing | Immediately after run starts |
+| OUTPUT_FINISHED | Individual output completed | When each output is ready |
 | RUN_FINISHED | Processing complete | When run succeeds or fails |
+
+<Tip>
+The `OUTPUT_FINISHED` event is useful for real-time progress tracking and starting post-processing on individual outputs before the entire run completes.
+</Tip>
 
 ### Webhook Payload
 
@@ -62,11 +67,29 @@ The webhook payload format is the same for both manual API runs and triggered ru
 }
 ```
 
+For individual output completion (`OUTPUT_FINISHED`):
+
+```json
+{
+  "flag": "OUTPUT_FINISHED",
+  "agent_id": "123e4567-e89b-12d3-a456-789012345678",
+  "run_id": "7f8d9c2b-4a6e-8b3f-1d5c-9e2f3a4b5c6d",
+  "status": "running",
+  "output": {
+    "video_url": "https://storage.googleapis.com/mosaic-outputs/output-1.mp4",
+    "thumbnail_url": "https://storage.googleapis.com/mosaic-thumbnails/thumb-1.jpg",
+    "completed_at": "2025-01-10T14:35:30Z"
+  },
+  "outputs_completed": 1,
+  "outputs_total": 3
+}
+```
+
 ### Payload Fields
 
 | Field | Type | Description |
 | --- | --- | --- |
-| flag | string | Event type: `RUN_STARTED` or `RUN_FINISHED` |
+| flag | string | Event type: `RUN_STARTED`, `OUTPUT_FINISHED`, or `RUN_FINISHED` |
 | agent_id | string | ID of the agent that was run |
 | run_id | string | Unique identifier for this run (internally: agent_state) |
 | status | string | Current status: `running`, `completed`, or `failed` |
@@ -77,6 +100,12 @@ The webhook payload format is the same for both manual API runs and triggered ru
 | outputs | array | Output videos (only present when status is `completed`) |
 | outputs[].video_url | string | URL of the output video |
 | outputs[].thumbnail_url | string | URL of the output video thumbnail |
+| output | object | Single output (only present in `OUTPUT_FINISHED` events) |
+| output.video_url | string | URL of the completed output video |
+| output.thumbnail_url | string | URL of the completed output thumbnail |
+| output.completed_at | string | When this specific output was completed |
+| outputs_completed | number | Number of outputs completed so far (`OUTPUT_FINISHED` only) |
+| outputs_total | number | Total expected outputs (`OUTPUT_FINISHED` only) |
 | triggered_by | object | Only present for triggered runs (not manual API runs) |
 | triggered_by.id | string | ID of the trigger |
 | triggered_by.type | string | Type of trigger (e.g., `youtube`) |
@@ -199,6 +228,19 @@ def handle_mosaic_webhook(token):
             youtube_info = triggered_by.get('youtube', {})
             logger.info(f"Triggered by YouTube video: {youtube_info.get('title')}")
         
+    elif flag == 'OUTPUT_FINISHED':
+        output = data.get('output', {})
+        outputs_completed = data.get('outputs_completed', 0)
+        outputs_total = data.get('outputs_total', 0)
+        
+        logger.info(f"Output {outputs_completed}/{outputs_total} completed for run {run_id}")
+        
+        # Process the individual output
+        video_url = output.get('video_url')
+        thumbnail_url = output.get('thumbnail_url')
+        completed_at = output.get('completed_at')
+        # Process this output immediately (e.g., start post-processing)
+        
     elif flag == 'RUN_FINISHED':
         if status == 'completed':
             inputs = data.get('inputs', [])
@@ -207,11 +249,11 @@ def handle_mosaic_webhook(token):
             logger.info(f"Agent run {run_id} completed")
             logger.info(f"Processed {len(inputs)} inputs, generated {len(outputs)} outputs")
             
-            # Process outputs
+            # Process all outputs
             for output in outputs:
                 video_url = output.get('video_url')
                 thumbnail_url = output.get('thumbnail_url')
-                # Download, store, or process the outputs
+                # Final processing, cleanup, notifications
                 
         elif status == 'failed':
             logger.error(f"Agent run {run_id} failed")
