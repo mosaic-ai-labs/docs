@@ -35,6 +35,36 @@ The `OUTPUT_FINISHED` event is useful for real-time progress tracking and starti
 
 The webhook payload format is the same for both manual API runs and triggered runs:
 
+For run initialization (`RUN_STARTED`):
+
+```json
+{
+  "flag": "RUN_STARTED",
+  "agent_id": "123e4567-e89b-12d3-a456-789012345678",
+  "run_id": "7f8d9c2b-4a6e-8b3f-1d5c-9e2f3a4b5c6d",
+  "status": "running",
+  "inputs": [
+    {
+      "video_id": "550e8400-e29b-41d4-a716-446655440000",
+      "video_url": "https://storage.googleapis.com/mosaic-inputs/input.mp4",
+      "thumbnail_url": "https://storage.googleapis.com/mosaic-inputs/thumb.jpg"
+    }
+  ],
+  "triggered_by": {  // Only present for triggered runs
+    "id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f",
+    "type": "youtube",
+    "youtube": {
+      "id": "dQw4w9WgXcQ",
+      "channel": "UCxxxxxxxxxxxxxx",
+      "title": "Never Gonna Give You Up",
+      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    }
+  }
+}
+```
+
+For run completion (`RUN_FINISHED`):
+
 ```json
 {
   "flag": "RUN_FINISHED",
@@ -159,7 +189,7 @@ Never expose your webhook secret in client-side code or public repositories. Tre
 Include the `callback_url` when starting an agent run:
 
 ```bash
-curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/run" \
+curl -X POST "https://api.mosaic.so/agent/[agent_id]/run" \
   -H "Authorization: Bearer mk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -173,7 +203,7 @@ curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/run" \
 Configure webhooks when setting up triggers to be notified of automatic runs:
 
 ```bash
-curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/lowest_youtube_id/add_listeners" \
+curl -X POST "https://api.mosaic.so/agent/[agent_id]/triggers/lowest_youtube_id/add_listeners" \
   -H "Authorization: Bearer mk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{

@@ -31,7 +31,7 @@
       "anchors": [
         {
           "anchor": "Documentation",
-          "href": "https://docs.usemosaic.ai",
+          "href": "https://docs.mosaic.so",
           "icon": "book-open-cover"
         },
         {
@@ -50,13 +50,13 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:adish@usemosaic.ai"
+        "href": "mailto:adish@mosaic.so"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Dashboard",
-      "href": "https://app.usemosaic.ai"
+      "href": "https://app.mosaic.so"
     }
   },
   "footer": {

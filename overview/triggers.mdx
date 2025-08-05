@@ -28,7 +28,7 @@ Monitor YouTube channels and automatically process new videos as they're uploade
 Retrieve the YouTube trigger configured for an agent.
 
 ```bash
-curl -X GET "https://api.usemosaic.ai/agent/[agent_id]/triggers" \
+curl -X GET "https://api.mosaic.so/agent/[agent_id]/triggers" \
   -H "Authorization: Bearer mk_your_api_key"
 ```
 
@@ -59,7 +59,7 @@ Add YouTube channels to monitor for new videos. This endpoint:
 - Supports both channel IDs and channel URLs
 
 ```bash
-curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/add_youtube_channels" \
+curl -X POST "https://api.mosaic.so/agent/[agent_id]/triggers/add_youtube_channels" \
   -H "Authorization: Bearer mk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -89,7 +89,7 @@ curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/add_youtube_cha
 Stop monitoring specific YouTube channels.
 
 ```bash
-curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/triggers/remove_youtube_channels" \
+curl -X POST "https://api.mosaic.so/agent/[agent_id]/triggers/remove_youtube_channels" \
   -H "Authorization: Bearer mk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -179,7 +179,7 @@ Here's how to set up automatic video processing for a YouTube channel:
 import requests
 
 API_KEY = "mk_your_api_key"
-BASE_URL = "https://api.usemosaic.ai"
+BASE_URL = "https://api.mosaic.so"
 AGENT_ID = "{agent_id}"
 
 headers = {

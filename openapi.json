@@ -5,12 +5,12 @@
     "description": "Professional-grade video editing workflows powered by AI agents",
     "version": "2.0.0",
     "contact": {
-      "email": "adish@usemosaic.ai"
+      "email": "adish@mosaic.so"
     }
   },
   "servers": [
     {
-      "url": "https://api.usemosaic.ai"
+      "url": "https://api.mosaic.so"
     }
   ],
   "security": [

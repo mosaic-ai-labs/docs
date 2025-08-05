@@ -23,7 +23,7 @@ Request a pre-signed URL for uploading your video.
 
 ### Request
 ```bash
-curl -X GET "https://api.usemosaic.ai/videos/get_upload_url" \
+curl -X GET "https://api.mosaic.so/videos/get_upload_url" \
   -H "Authorization: Bearer mk_your_api_key"
 ```
 
@@ -66,7 +66,7 @@ Finalize the upload to make your video available for processing.
 
 ### Request
 ```bash
-curl -X POST "https://api.usemosaic.ai/videos/finalize_upload" \
+curl -X POST "https://api.mosaic.so/videos/finalize_upload" \
   -H "Authorization: Bearer mk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -96,7 +96,7 @@ Here's a complete example using bash:
 
 ```bash
 # Step 1: Get upload URL
-RESPONSE=$(curl -s -X GET "https://api.usemosaic.ai/videos/get_upload_url" \
+RESPONSE=$(curl -s -X GET "https://api.mosaic.so/videos/get_upload_url" \
   -H "Authorization: Bearer $MOSAIC_API_KEY")
 
 VIDEO_ID=$(echo $RESPONSE | jq -r '.video_id')
@@ -108,7 +108,7 @@ curl -X PUT "$UPLOAD_URL" \
   --data-binary @my-video.mp4
 
 # Step 3: Finalize upload
-curl -X POST "https://api.usemosaic.ai/videos/finalize_upload" \
+curl -X POST "https://api.mosaic.so/videos/finalize_upload" \
   -H "Authorization: Bearer $MOSAIC_API_KEY" \
   -H "Content-Type: application/json" \
   -d "{\"video_id\": \"$VIDEO_ID\"}"

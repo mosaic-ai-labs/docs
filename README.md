@@ -2,7 +2,7 @@
 
 ⚠️ **PREVIEW DOCUMENTATION** - These endpoints describe the new Mosaic API architecture that will be deployed soon.
 
-This repository contains the API documentation for [Mosaic AI](https://usemosaic.ai), a platform for AI-powered video editing workflows.
+This repository contains the API documentation for [Mosaic AI](https://mosaic.so), a platform for AI-powered video editing workflows.
 
 ## 📚 Documentation Structure
 
@@ -21,7 +21,7 @@ The Mosaic API enables you to:
 3. **Set up triggers** - Automatically process new YouTube videos
 4. **Receive webhooks** - Get real-time updates on processing status
 
-Base URL: `https://api.usemosaic.ai`
+Base URL: `https://api.mosaic.so`
 
 ## 🔧 Local Development
 
@@ -42,8 +42,8 @@ The documentation will be available at `http://localhost:3000`.
 ## 🤝 Support
 
 - 💬 [Discord Community](https://discord.gg/26SAZzBTaP)
-- 📧 Email: [adish@usemosaic.ai](mailto:adish@usemosaic.ai)
-- 🌐 Dashboard: [app.usemosaic.ai](https://app.usemosaic.ai)
+- 📧 Email: [adish@mosaic.so](mailto:adish@mosaic.so)
+- 🌐 Dashboard: [app.mosaic.so](https://app.mosaic.so)
 
 ## 🛠️ Troubleshooting
 

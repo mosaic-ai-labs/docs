@@ -30,15 +30,15 @@ Use an API key **prefixed `mk_`** for all API endpoints.
 # Bearer header (recommended)
 curl -H "Authorization: Bearer mk_your_key" \
      -H "Content-Type: application/json" \
-     https://api.usemosaic.ai/agent/[agent_id]/run
+     https://api.mosaic.so/agent/[agent_id]/run
 
 # X-API-Key header (alternative)
 curl -H "X-API-Key: mk_your_key" \
      -H "Content-Type: application/json" \
-     https://api.usemosaic.ai/agent/[agent_id]/run
+     https://api.mosaic.so/agent/[agent_id]/run
 ```
 
-API keys can be created and managed in your [Mosaic dashboard](https://app.usemosaic.ai).
+API keys can be created and managed in your [Mosaic dashboard](https://app.mosaic.so).
 
 ### Webhook Authentication
 
@@ -70,5 +70,5 @@ Responses use conventional HTTP status codes. On errors the body contains a mach
 ## Base URL
 
 ```text
-https://api.usemosaic.ai
+https://api.mosaic.so
 ```

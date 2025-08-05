@@ -13,7 +13,7 @@ Agents are pre-built workflows that process your videos with AI-powered editing 
 
 ### Creating Agents
 
-First, create an agent on [app.usemosaic.ai](https://app.usemosaic.ai). Once created, you can find the agent ID in the URL when viewing your agent.
+First, create an agent on [app.mosaic.so](https://app.mosaic.so). Once created, you can find the agent ID in the URL when viewing your agent.
 
 ---
 
@@ -23,7 +23,7 @@ Execute an agent workflow on one or more uploaded videos.
 
 ### Request
 ```bash
-curl -X POST "https://api.usemosaic.ai/agent/[agent_id]/run" \
+curl -X POST "https://api.mosaic.so/agent/[agent_id]/run" \
   -H "Authorization: Bearer mk_your_api_key" \
   -H "Content-Type: application/json" \
   -d '{
@@ -56,7 +56,7 @@ Poll this endpoint to check the status of your agent run and retrieve outputs.
 
 ### Request
 ```bash
-curl -X GET "https://api.usemosaic.ai/agent_run/[run_id]" \
+curl -X GET "https://api.mosaic.so/agent_run/[run_id]" \
   -H "Authorization: Bearer mk_your_api_key"
 ```
 
@@ -144,7 +144,7 @@ import requests
 import time
 
 API_KEY = "mk_your_api_key"
-BASE_URL = "https://api.usemosaic.ai"
+BASE_URL = "https://api.mosaic.so"
 headers = {"Authorization": f"Bearer {API_KEY}"}
 
 # Step 1: Get upload URL
