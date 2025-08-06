@@ -18,16 +18,10 @@ Explore each endpoint category in the sections below.
 
 ## Authentication
 
-Use an API key **prefixed `mk_`** for all API endpoints.
+Use an API key **prefixed `mk_`** for all API endpoints with the Authorization Bearer header.
 
 ```bash
-# Bearer header (recommended)
 curl -H "Authorization: Bearer mk_your_key" \
-     -H "Content-Type: application/json" \
-     https://api.mosaic.so/agent/[agent_id]/run
-
-# X-API-Key header (alternative)
-curl -H "X-API-Key: mk_your_key" \
      -H "Content-Type: application/json" \
      https://api.mosaic.so/agent/[agent_id]/run
 ```
