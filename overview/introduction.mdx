@@ -9,7 +9,7 @@ Mosaic's REST API allows you to kick off professional-grade video editing workfl
 
 ### Typical flow
 
-1. **Upload a video** – Get a signed URL and upload the bytes (`/videos/get_upload_url`, `/videos/finalize_upload`).
+1. **Upload a video** – Request a signed URL and upload the bytes (`POST /videos/get_upload_url`, `POST /videos/finalize_upload`).
 2. **Run an agent** – Call `/agent/[agent_id]/run` with the video IDs.
 3. **Track progress** – Poll `/agent_run/[run_id]` or subscribe to a webhook.
 4. **Download outputs** – The outputs are included in the agent run status response.

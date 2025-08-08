@@ -143,14 +143,22 @@ API_KEY = "mk_your_api_key"
 BASE_URL = "https://api.mosaic.so"
 headers = {"Authorization": f"Bearer {API_KEY}"}
 
-# Step 1: Get upload URL
-response = requests.get(f"{BASE_URL}/videos/get_upload_url", headers=headers)
+# Step 1: Get upload URL and policy fields
+response = requests.post(f"{BASE_URL}/videos/get_upload_url", 
+                        headers={**headers, "Content-Type": "application/json"},
+                        json={"filename": "my-video.mp4", "content_type": "video/mp4"})
 upload_data = response.json()
 
-# Step 2: Upload video
+# Step 2: Upload video with policy fields (multipart form)
 with open("my-video.mp4", "rb") as video_file:
-    requests.put(upload_data["upload_url"], data=video_file, 
-                headers={"Content-Type": "video/mp4"})
+    # Build multipart form with policy fields first, then file
+    files = {'file': ('my-video.mp4', video_file, 'video/mp4')}
+    response = requests.post(upload_data["upload_url"], 
+                            data=upload_data['fields'],  # Policy fields
+                            files=files)
+    
+    if response.status_code != 204:
+        raise Exception(f"Upload failed with status {response.status_code}")
 
 # Step 3: Finalize upload
 requests.post(f"{BASE_URL}/videos/finalize_upload", 

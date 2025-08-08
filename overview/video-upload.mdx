@@ -3,7 +3,7 @@ title: "Video Upload"
 description: "Upload videos to Mosaic in three simple steps"
 ---
 
-Mosaic uses a streamlined 3-step process for video uploads, leveraging Google Cloud Storage's resumable upload feature for reliable handling of large files. This allows you to upload directly to cloud storage using pre-signed URLs with automatic recovery from network interruptions.
+Mosaic uses a streamlined 3-step process for video uploads, leveraging Google Cloud Storage's signed policy uploads for secure and reliable handling of files. This allows you to upload directly to cloud storage using pre-signed URLs with policy-based authentication.
 
 ## Upload Limits
 
@@ -12,62 +12,111 @@ Mosaic uses a streamlined 3-step process for video uploads, leveraging Google Cl
 
 ## Upload Process Overview
 
-1. **Get an upload URL** - Request a pre-signed URL from the API
-2. **Upload your video** - POST your video to the URL using resumable upload
+1. **Request an upload URL** - POST your file details to get a pre-signed URL and policy fields
+2. **Upload your video** - POST your video as multipart form data with the policy fields
 3. **Finalize the upload** - Confirm the upload completion
 
 ---
 
-## Step 1: GET /videos/get_upload_url
+## Step 1: POST /videos/get_upload_url
 
 Request a pre-signed URL for uploading your video.
 
 ### Request
 ```bash
-curl -X GET "https://api.mosaic.so/videos/get_upload_url" \
-  -H "Authorization: Bearer mk_your_api_key"
+curl -X POST "https://api.mosaic.so/videos/get_upload_url" \
+  -H "Authorization: Bearer mk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filename": "my-video.mp4",
+    "content_type": "video/mp4"
+  }'
 ```
+
+### Request Body
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| filename | string | ✅ | Name of the file being uploaded |
+| content_type | string | ✅ | MIME type of the video (e.g., "video/mp4") |
 
 ### Response
 ```json
 {
   "video_id": "550e8400-e29b-41d4-a716-446655440000",
-  "upload_url": "https://storage.googleapis.com/mosaic-uploads/..."
+  "upload_url": "https://storage.googleapis.com/mosaic-uploads/...",
+  "method": "POST",
+  "fields": {
+    "key": "uploads/550e8400-e29b-41d4-a716-446655440000",
+    "x-goog-date": "20240115T120000Z",
+    "x-goog-credential": "...",
+    "x-goog-algorithm": "GOOG4-RSA-SHA256",
+    "policy": "...",
+    "x-goog-signature": "..."
+  }
 }
 ```
 
 | Field | Type | Description |
 | --- | --- | --- |
 | video_id | string | Unique identifier for your video |
-| upload_url | string | Pre-signed URL for uploading (expires in 1 hour) |
+| upload_url | string | GCS upload endpoint URL |
+| method | string | HTTP method to use for upload (always "POST") |
+| fields | object | Policy fields required for GCS upload (include all fields in your upload request) |
 
 ---
 
 ## Step 2: Upload to the URL
 
-Upload your video file directly to the provided `upload_url` using a POST request with Google Cloud Storage resumable upload.
+Upload your video file to the provided `upload_url` using a multipart POST request with the policy fields from the response.
 
 ```bash
+# Using the response from Step 1, construct a multipart form upload
+# Note: The fields from the response must be included as form data
+# The file must be sent with field name "file"
 curl -X POST "$UPLOAD_URL" \
-  -H "Content-Type: video/mp4" \
-  -H "X-Goog-Resumable: start" \
-  --data-binary @your-video.mp4
+  $(echo $FIELDS | jq -r 'to_entries | map("-F \"\(.key)=\(.value)\"") | join(" ")') \
+  -F "file=@your-video.mp4"
 ```
+
+### Response Codes
+
+| Status | Description |
+| --- | --- |
+| 204 No Content | Success - upload completed |
+| 400 Bad Request | Policy violation (file exceeds 5GB limit) |
+| Other | Unexpected error - check response body |
 
 ### TypeScript Example
 
 ```typescript
-async function uploadVideo(uploadUrl: string, videoFile: File): Promise<void> {
+async function uploadVideo(
+  uploadUrl: string, 
+  videoFile: File,
+  fields: Record<string, string>
+): Promise<void> {
+  // Create form data with policy fields first, then the file
+  const formData = new FormData();
+  
+  // Add all policy fields from the response
+  Object.entries(fields).forEach(([key, value]) => {
+    formData.append(key, value);
+  });
+  
+  // Add file with field name "file" (must be last)
+  formData.append('file', videoFile);
+  
   const response = await fetch(uploadUrl, {
     method: 'POST',
-    headers: {
-      'Content-Type': videoFile.type || 'video/mp4',
-      'X-Goog-Resumable': 'start'
-    },
-    body: videoFile
+    body: formData
   });
 
-  if (!response.ok) {
+  // Check response codes
+  if (response.status === 204) {
+    // Success - no content returned
+    return;
+  } else if (response.status === 400) {
+    throw new Error('File exceeds 5GB size limit');
+  } else {
     throw new Error(`Upload failed: ${response.statusText}`);
   }
 }
@@ -75,17 +124,17 @@ async function uploadVideo(uploadUrl: string, videoFile: File): Promise<void> {
 
 <Note>
 **Important**: 
-- The upload URL expires after 1 hour
-- Set the correct `Content-Type` header matching your video format
+- The upload URL and policy fields expire after 1 hour
+- Include all fields from the response in your multipart form data
+- The file must be the last field in the multipart form
 - Videos must be under 90 minutes and 5 GB in size
-- Uses Google Cloud Storage resumable uploads for reliability with large files
 </Note>
 
 ---
 
 ## Step 3: POST /videos/finalize_upload
 
-Finalize the upload to make your video available for processing.
+Finalize the upload to make your video available for processing. This step validates the video against size and duration limits.
 
 ### Request
 ```bash
@@ -109,6 +158,15 @@ curl -X POST "https://api.mosaic.so/videos/finalize_upload" \
 }
 ```
 
+### Response Codes
+
+| Status | Description |
+| --- | --- |
+| 200 OK | Success - upload finalized |
+| 413 Payload Too Large | Video exceeds duration limit (90 minutes) or processing limits |
+| 400 Bad Request | Invalid video_id or upload not found |
+| 500 Internal Server Error | Server error during finalization |
+
 ---
 
 ## Complete Examples
@@ -116,24 +174,56 @@ curl -X POST "https://api.mosaic.so/videos/finalize_upload" \
 ### Bash Example
 
 ```bash
-# Step 1: Get upload URL
-RESPONSE=$(curl -s -X GET "https://api.mosaic.so/videos/get_upload_url" \
-  -H "Authorization: Bearer $MOSAIC_API_KEY")
+#!/bin/bash
+
+# Step 1: Get upload URL and policy fields
+echo "📤 Getting upload URL..."
+RESPONSE=$(curl -s -X POST "https://api.mosaic.so/videos/get_upload_url" \
+  -H "Authorization: Bearer $MOSAIC_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filename": "my-video.mp4",
+    "content_type": "video/mp4"
+  }')
 
 VIDEO_ID=$(echo $RESPONSE | jq -r '.video_id')
 UPLOAD_URL=$(echo $RESPONSE | jq -r '.upload_url')
+FIELDS=$(echo $RESPONSE | jq -r '.fields')
 
-# Step 2: Upload video using POST with resumable upload
-curl -X POST "$UPLOAD_URL" \
-  -H "Content-Type: video/mp4" \
-  -H "X-Goog-Resumable: start" \
-  --data-binary @my-video.mp4
+echo "   ✅ Got video_id: $VIDEO_ID"
+
+# Step 2: Upload video with policy fields
+echo "⬆️  Uploading video..."
+HTTP_STATUS=$(curl -w "%{http_code}" -o /dev/null -s -X POST "$UPLOAD_URL" \
+  $(echo $FIELDS | jq -r 'to_entries | map("-F \"\(.key)=\(.value)\"") | join(" ")') \
+  -F "file=@my-video.mp4")
+
+if [ "$HTTP_STATUS" -eq 204 ]; then
+  echo "   ✅ Upload successful"
+elif [ "$HTTP_STATUS" -eq 400 ]; then
+  echo "   ❌ File exceeds 5GB limit"
+  exit 1
+else
+  echo "   ❌ Upload failed with status $HTTP_STATUS"
+  exit 1
+fi
 
 # Step 3: Finalize upload
-curl -X POST "https://api.mosaic.so/videos/finalize_upload" \
+echo "✅ Finalizing upload..."
+FINALIZE_STATUS=$(curl -w "%{http_code}" -o /dev/null -s -X POST "https://api.mosaic.so/videos/finalize_upload" \
   -H "Authorization: Bearer $MOSAIC_API_KEY" \
   -H "Content-Type: application/json" \
-  -d "{\"video_id\": \"$VIDEO_ID\"}"
+  -d "{\"video_id\": \"$VIDEO_ID\"}")
+
+if [ "$FINALIZE_STATUS" -eq 200 ]; then
+  echo "🎉 Upload complete! Video ID: $VIDEO_ID"
+elif [ "$FINALIZE_STATUS" -eq 413 ]; then
+  echo "   ❌ Video exceeds 90 minute duration limit"
+  exit 1
+else
+  echo "   ❌ Finalization failed with status $FINALIZE_STATUS"
+  exit 1
+fi
 ```
 
 ### TypeScript Example
@@ -142,41 +232,66 @@ curl -X POST "https://api.mosaic.so/videos/finalize_upload" \
 interface UploadUrlResponse {
   video_id: string;
   upload_url: string;
+  method: string;
+  fields: Record<string, string>;
 }
 
 async function uploadVideoToMosaic(
   apiKey: string, 
   videoFile: File
 ): Promise<string> {
-  // Step 1: Get upload URL
+  console.log('📤 Step 1: Getting upload URL...');
+  
+  // Step 1: Get upload URL and policy fields
   const getUrlResponse = await fetch('https://api.mosaic.so/videos/get_upload_url', {
-    method: 'GET',
+    method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`
-    }
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      filename: videoFile.name,
+      content_type: videoFile.type || 'video/mp4'
+    })
   });
   
   if (!getUrlResponse.ok) {
     throw new Error('Failed to get upload URL');
   }
   
-  const { video_id, upload_url }: UploadUrlResponse = await getUrlResponse.json();
+  const { video_id, upload_url, fields }: UploadUrlResponse = await getUrlResponse.json();
+  console.log(`   ✅ Got video_id: ${video_id}`);
   
-  // Step 2: Upload video using resumable upload
-  const uploadResponse = await fetch(upload_url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': videoFile.type || 'video/mp4',
-      'X-Goog-Resumable': 'start'
-    },
-    body: videoFile
+  // Step 2: Upload video with policy fields
+  console.log('⬆️  Step 2: Uploading video...');
+  console.log(`   File size: ${(videoFile.size / (1024 * 1024)).toFixed(2)} MB`);
+  
+  const formData = new FormData();
+  
+  // Add all policy fields first
+  Object.entries(fields).forEach(([key, value]) => {
+    formData.append(key, value);
   });
   
-  if (!uploadResponse.ok) {
-    throw new Error('Failed to upload video');
+  // Add file with field name "file" (must be last)
+  formData.append('file', videoFile);
+  
+  const uploadResponse = await fetch(upload_url, {
+    method: 'POST',
+    body: formData
+  });
+  
+  if (uploadResponse.status === 204) {
+    console.log('   ✅ Upload successful');
+  } else if (uploadResponse.status === 400) {
+    throw new Error('❌ File exceeds 5GB size limit');
+  } else {
+    throw new Error(`❌ Upload failed with status ${uploadResponse.status}`);
   }
   
   // Step 3: Finalize upload
+  console.log('✅ Step 3: Finalizing upload...');
+  
   const finalizeResponse = await fetch('https://api.mosaic.so/videos/finalize_upload', {
     method: 'POST',
     headers: {
@@ -186,8 +301,14 @@ async function uploadVideoToMosaic(
     body: JSON.stringify({ video_id })
   });
   
-  if (!finalizeResponse.ok) {
-    throw new Error('Failed to finalize upload');
+  if (finalizeResponse.status === 200) {
+    console.log('   ✅ Finalization complete');
+    console.log(`🎉 Upload complete! Video ID: ${video_id}`);
+  } else if (finalizeResponse.status === 413) {
+    const error = await finalizeResponse.json();
+    throw new Error(`❌ Video exceeds limits: ${error.detail || 'Duration > 90 minutes'}`);
+  } else {
+    throw new Error(`❌ Finalization failed with status ${finalizeResponse.status}`);
   }
   
   return video_id; // Return video ID for use with agent runs
@@ -207,16 +328,89 @@ if (file) {
 }
 ```
 
+### Python Example
+
+```python
+import requests
+import os
+
+def upload_video_to_mosaic(api_key: str, file_path: str) -> str:
+    """Upload a video file to Mosaic using the 3-step process."""
+    
+    headers = {"Authorization": f"Bearer {api_key}"}
+    
+    # Step 1: Get upload URL and policy fields
+    print("📤 Step 1: Getting upload URL...")
+    filename = os.path.basename(file_path)
+    
+    response = requests.post(
+        "https://api.mosaic.so/videos/get_upload_url",
+        headers={**headers, "Content-Type": "application/json"},
+        json={
+            "filename": filename,
+            "content_type": "video/mp4"  # Adjust based on actual file type
+        }
+    )
+    response.raise_for_status()
+    
+    upload_data = response.json()
+    video_id = upload_data["video_id"]
+    upload_url = upload_data["upload_url"]
+    fields = upload_data["fields"]
+    
+    print(f"   ✅ Got video_id: {video_id}")
+    
+    # Step 2: Upload video with policy fields
+    print("⬆️  Step 2: Uploading video...")
+    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
+    print(f"   File size: {file_size_mb:.2f} MB")
+    
+    with open(file_path, "rb") as f:
+        # Note: 'file' field name is required, files must come after data fields
+        files = {"file": (filename, f, "video/mp4")}
+        upload_response = requests.post(upload_url, data=fields, files=files)
+    
+    if upload_response.status_code == 204:
+        print("   ✅ Upload successful")
+    elif upload_response.status_code == 400:
+        raise Exception("❌ File exceeds 5GB size limit")
+    else:
+        raise Exception(f"❌ Upload failed with status {upload_response.status_code}")
+    
+    # Step 3: Finalize upload
+    print("✅ Step 3: Finalizing upload...")
+    finalize_response = requests.post(
+        "https://api.mosaic.so/videos/finalize_upload",
+        headers={**headers, "Content-Type": "application/json"},
+        json={"video_id": video_id}
+    )
+    
+    if finalize_response.status_code == 200:
+        print("   ✅ Finalization complete")
+        print(f"🎉 Upload complete! Video ID: {video_id}")
+    elif finalize_response.status_code == 413:
+        error = finalize_response.json()
+        raise Exception(f"❌ Video exceeds limits: {error.get('detail', 'Duration > 90 minutes')}")
+    else:
+        raise Exception(f"❌ Finalization failed with status {finalize_response.status_code}")
+    
+    return video_id
+
+# Usage
+try:
+    video_id = upload_video_to_mosaic("mk_your_api_key", "my-video.mp4")
+    print(f"Ready to use video_id: {video_id}")
+except Exception as e:
+    print(f"Upload failed: {e}")
+```
+
 ## Best Practices
 
 1. **Error Handling**: Always check the response status before proceeding to the next step
 2. **Retry Logic**: Implement exponential backoff for network failures
-3. **Progress Tracking**: For large files, consider implementing upload progress monitoring
-4. **Resumable Uploads**: The POST method with `X-Goog-Resumable: start` header enables Google Cloud Storage's resumable upload feature, which:
-   - Automatically handles network interruptions
-   - Allows resuming failed uploads without starting over
-   - Provides better reliability for large files (up to 5 GB)
-   - Optimizes bandwidth usage
+3. **Field Order**: Always add policy fields before the file in multipart uploads - GCS requires the file to be the last field
+4. **Progress Tracking**: For large files, consider implementing upload progress monitoring
+5. **Policy Expiration**: Upload URLs and policy fields expire after 1 hour - complete uploads promptly
 
 ## What's Next?
 
