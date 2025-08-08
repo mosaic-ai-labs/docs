@@ -299,7 +299,7 @@ def handle_mosaic_webhook(token):
                 
         elif status == 'failed':
             logger.error(f"Agent run {run_id} failed")
-            # Handle failure, retry, notify, etc.
+            # Handle failure, notify, etc.
     
     # Always return 200 to acknowledge receipt
     return jsonify({"received": True}), 200
@@ -307,27 +307,6 @@ def handle_mosaic_webhook(token):
 if __name__ == '__main__':
     app.run(port=3000)
 ```
-
----
-
-## Webhook Reliability
-
-### Retry Policy
-
-Mosaic implements automatic retries for failed webhook deliveries:
-
-- **Retry attempts**: Up to 5 times
-- **Backoff strategy**: Exponential backoff (1, 2, 4, 8, 16 minutes)
-- **Timeout**: 30 seconds per request
-- **Success criteria**: HTTP 2xx response
-
-### Handling Failures
-
-If your endpoint is temporarily unavailable:
-
-1. Mosaic will retry with exponential backoff
-2. You can still poll the `/agent_run/[run_id]` endpoint
-3. Consider implementing a webhook replay system
 
 ---
 
@@ -363,7 +342,7 @@ You can use [webhook.site](https://webhook.site) to inspect webhook payloads dur
 1. **Check URL**: Ensure the URL is publicly accessible
 2. **Check HTTPS**: Some environments require HTTPS
 3. **Check Response**: Your handler must return a 2xx status
-4. **Check Logs**: Look for retry attempts in your server logs
+4. **Check Logs**: Review your server logs for any errors
 
 ### Duplicate Webhooks
 
