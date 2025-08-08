@@ -62,7 +62,7 @@ Always test your API key with `/whoami` first when setting up a new integration.
 
 ### Webhook Authentication
 
-Webhook requests from Mosaic include an `X-Webhook-Secret` header for verification. Always validate this secret before processing webhook payloads. See the [Webhooks](/overview/webhooks) documentation for details.
+When a webhook secret is configured for your account, Mosaic includes an `X-Mosaic-Signature` header for verification. If configured, always validate this signature before processing webhook payloads. See the [Webhooks](/overview/webhooks) documentation for details.
 
 
 

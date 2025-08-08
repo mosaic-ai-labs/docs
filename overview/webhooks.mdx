@@ -155,23 +155,28 @@ For outputs completion (`OUTPUTS_FINISHED`):
 
 ## Webhook Security
 
-### Webhook Secret Verification
+### Webhook Signature Verification
 
-Every webhook request from Mosaic includes a secret key in the headers to verify authenticity:
+When a webhook secret is configured for your account, Mosaic includes it in the `X-Mosaic-Signature` header to verify authenticity:
 
 ```
-X-Webhook-Secret: your_webhook_secret
+X-Mosaic-Signature: your_webhook_secret
 ```
 
-Always validate this secret before processing the webhook payload:
+**Note**: If no webhook secret has been configured for your account, this header will not be present.
+
+To validate webhook requests when using a secret:
 
 ```python
 # Example verification
-webhook_secret = request.headers.get('X-Webhook-Secret')
+webhook_signature = request.headers.get('X-Mosaic-Signature')
 expected_secret = os.environ.get('MOSAIC_WEBHOOK_SECRET')
 
-if webhook_secret != expected_secret:
-    return {"error": "Invalid webhook secret"}, 401
+# If you have configured a webhook secret, validate it
+if expected_secret:
+    if webhook_signature != expected_secret:
+        return {"error": "Invalid webhook signature"}, 401
+# If no secret is configured, the header won't be present
 ```
 
 <Warning>
@@ -180,11 +185,12 @@ Never expose your webhook secret in client-side code or public repositories. Tre
 
 ### Security Best Practices
 
-1. **Always Verify the Secret**: Never process webhooks without validating the `X-Webhook-Secret` header
-2. **Use HTTPS**: Only use HTTPS endpoints for webhooks to prevent secret interception
+1. **Verify the Signature When Present**: If you've configured a webhook secret, always validate the `X-Mosaic-Signature` header
+2. **Use HTTPS**: Only use HTTPS endpoints for webhooks to prevent interception
 3. **Store Secrets Securely**: Use environment variables or a secure key management system
 4. **Handle Duplicates**: Implement idempotency to handle potential duplicate webhooks
 5. **Log Failed Attempts**: Monitor and log invalid webhook requests for security auditing
+6. **Configure a Secret**: We recommend configuring a webhook secret for production environments to ensure webhook authenticity
 
 ---
 
@@ -236,11 +242,15 @@ MOSAIC_WEBHOOK_SECRET = os.environ.get('MOSAIC_WEBHOOK_SECRET')
 
 @app.route('/webhooks/mosaic/<token>', methods=['POST'])
 def handle_mosaic_webhook(token):
-    # Verify webhook secret from Mosaic
-    webhook_secret = request.headers.get('X-Webhook-Secret')
-    if webhook_secret != MOSAIC_WEBHOOK_SECRET:
-        logger.warning("Invalid webhook secret received")
-        return jsonify({"error": "Invalid webhook secret"}), 401
+    # Verify webhook signature from Mosaic (if configured)
+    webhook_signature = request.headers.get('X-Mosaic-Signature')
+    
+    # If we have a configured secret, validate it
+    if MOSAIC_WEBHOOK_SECRET:
+        if webhook_signature != MOSAIC_WEBHOOK_SECRET:
+            logger.warning("Invalid or missing webhook signature")
+            return jsonify({"error": "Invalid webhook signature"}), 401
+    # Note: If no secret is configured, X-Mosaic-Signature header won't be present
     
     # Verify URL token (optional additional security)
     if token != os.environ.get('URL_TOKEN'):
