@@ -3,7 +3,7 @@ title: "Video Upload"
 description: "Upload videos to Mosaic in three simple steps"
 ---
 
-Mosaic uses a streamlined 3-step process for video uploads, allowing you to upload directly to cloud storage using pre-signed URLs.
+Mosaic uses a streamlined 3-step process for video uploads, leveraging Google Cloud Storage's resumable upload feature for reliable handling of large files. This allows you to upload directly to cloud storage using pre-signed URLs with automatic recovery from network interruptions.
 
 ## Upload Limits
 
@@ -13,7 +13,7 @@ Mosaic uses a streamlined 3-step process for video uploads, allowing you to uplo
 ## Upload Process Overview
 
 1. **Get an upload URL** - Request a pre-signed URL from the API
-2. **Upload your video** - Send your video directly to the upload URL
+2. **Upload your video** - POST your video to the URL using resumable upload
 3. **Finalize the upload** - Confirm the upload completion
 
 ---
@@ -45,12 +45,32 @@ curl -X GET "https://api.mosaic.so/videos/get_upload_url" \
 
 ## Step 2: Upload to the URL
 
-Upload your video file directly to the provided `upload_url` using a PUT request.
+Upload your video file directly to the provided `upload_url` using a POST request with Google Cloud Storage resumable upload.
 
 ```bash
-curl -X PUT "$UPLOAD_URL" \
+curl -X POST "$UPLOAD_URL" \
   -H "Content-Type: video/mp4" \
+  -H "X-Goog-Resumable: start" \
   --data-binary @your-video.mp4
+```
+
+### TypeScript Example
+
+```typescript
+async function uploadVideo(uploadUrl: string, videoFile: File): Promise<void> {
+  const response = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': videoFile.type || 'video/mp4',
+      'X-Goog-Resumable': 'start'
+    },
+    body: videoFile
+  });
+
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.statusText}`);
+  }
+}
 ```
 
 <Note>
@@ -58,6 +78,7 @@ curl -X PUT "$UPLOAD_URL" \
 - The upload URL expires after 1 hour
 - Set the correct `Content-Type` header matching your video format
 - Videos must be under 90 minutes and 5 GB in size
+- Uses Google Cloud Storage resumable uploads for reliability with large files
 </Note>
 
 ---
@@ -90,9 +111,9 @@ curl -X POST "https://api.mosaic.so/videos/finalize_upload" \
 
 ---
 
-## Complete Example
+## Complete Examples
 
-Here's a complete example using bash:
+### Bash Example
 
 ```bash
 # Step 1: Get upload URL
@@ -102,9 +123,10 @@ RESPONSE=$(curl -s -X GET "https://api.mosaic.so/videos/get_upload_url" \
 VIDEO_ID=$(echo $RESPONSE | jq -r '.video_id')
 UPLOAD_URL=$(echo $RESPONSE | jq -r '.upload_url')
 
-# Step 2: Upload video
-curl -X PUT "$UPLOAD_URL" \
+# Step 2: Upload video using POST with resumable upload
+curl -X POST "$UPLOAD_URL" \
   -H "Content-Type: video/mp4" \
+  -H "X-Goog-Resumable: start" \
   --data-binary @my-video.mp4
 
 # Step 3: Finalize upload
@@ -114,11 +136,87 @@ curl -X POST "https://api.mosaic.so/videos/finalize_upload" \
   -d "{\"video_id\": \"$VIDEO_ID\"}"
 ```
 
+### TypeScript Example
+
+```typescript
+interface UploadUrlResponse {
+  video_id: string;
+  upload_url: string;
+}
+
+async function uploadVideoToMosaic(
+  apiKey: string, 
+  videoFile: File
+): Promise<string> {
+  // Step 1: Get upload URL
+  const getUrlResponse = await fetch('https://api.mosaic.so/videos/get_upload_url', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`
+    }
+  });
+  
+  if (!getUrlResponse.ok) {
+    throw new Error('Failed to get upload URL');
+  }
+  
+  const { video_id, upload_url }: UploadUrlResponse = await getUrlResponse.json();
+  
+  // Step 2: Upload video using resumable upload
+  const uploadResponse = await fetch(upload_url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': videoFile.type || 'video/mp4',
+      'X-Goog-Resumable': 'start'
+    },
+    body: videoFile
+  });
+  
+  if (!uploadResponse.ok) {
+    throw new Error('Failed to upload video');
+  }
+  
+  // Step 3: Finalize upload
+  const finalizeResponse = await fetch('https://api.mosaic.so/videos/finalize_upload', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ video_id })
+  });
+  
+  if (!finalizeResponse.ok) {
+    throw new Error('Failed to finalize upload');
+  }
+  
+  return video_id; // Return video ID for use with agent runs
+}
+
+// Usage
+const fileInput = document.querySelector<HTMLInputElement>('#video-input');
+const file = fileInput?.files?.[0];
+
+if (file) {
+  try {
+    const videoId = await uploadVideoToMosaic('mk_your_api_key', file);
+    console.log('Upload successful! Video ID:', videoId);
+  } catch (error) {
+    console.error('Upload failed:', error);
+  }
+}
+```
+
 ## Best Practices
 
 1. **Error Handling**: Always check the response status before proceeding to the next step
 2. **Retry Logic**: Implement exponential backoff for network failures
 3. **Progress Tracking**: For large files, consider implementing upload progress monitoring
+4. **Resumable Uploads**: The POST method with `X-Goog-Resumable: start` header enables Google Cloud Storage's resumable upload feature, which:
+   - Automatically handles network interruptions
+   - Allows resuming failed uploads without starting over
+   - Provides better reliability for large files (up to 5 GB)
+   - Optimizes bandwidth usage
 
 ## What's Next?
 
