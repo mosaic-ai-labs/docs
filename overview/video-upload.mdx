@@ -20,7 +20,7 @@ Mosaic uses a streamlined 3-step process for video uploads, leveraging Google Cl
 
 ## Step 1: POST /videos/get_upload_url
 
-Request a pre-signed URL for uploading your video.
+Request a pre-signed URL for uploading your video. Video metadata is now validated upfront for immediate feedback.
 
 ### Request
 ```bash
@@ -29,7 +29,11 @@ curl -X POST "https://api.mosaic.so/videos/get_upload_url" \
   -H "Content-Type: application/json" \
   -d '{
     "filename": "my-video.mp4",
-    "content_type": "video/mp4"
+    "content_type": "video/mp4",
+    "file_size": 104857600,
+    "width": 1920,
+    "height": 1080,
+    "duration_ms": 30000
   }'
 ```
 
@@ -38,6 +42,10 @@ curl -X POST "https://api.mosaic.so/videos/get_upload_url" \
 | --- | --- | --- | --- |
 | filename | string | ✅ | Name of the file being uploaded |
 | content_type | string | ✅ | MIME type of the video (e.g., "video/mp4") |
+| **file_size** | **integer** | **✅** | **File size in bytes (max 5GB)** |
+| **width** | **integer** | **✅** | **Video width in pixels** |
+| **height** | **integer** | **✅** | **Video height in pixels** |
+| **duration_ms** | **integer** | **✅** | **Video duration in milliseconds (max 90min)** |
 
 ### Response
 ```json
@@ -62,6 +70,15 @@ curl -X POST "https://api.mosaic.so/videos/get_upload_url" \
 | upload_url | string | GCS upload endpoint URL |
 | method | string | HTTP method to use for upload (always "POST") |
 | fields | object | Policy fields required for GCS upload (include all fields in your upload request) |
+
+### Error Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| 200 OK | Success - upload URL generated |
+| 400 Bad Request | Invalid metadata (negative dimensions, invalid content type, etc.) |
+| 413 Payload Too Large | File size > 5GB or duration > 90 minutes |
+| 401 Unauthorized | Invalid API key |
 
 ---
 
@@ -134,7 +151,7 @@ async function uploadVideo(
 
 ## Step 3: POST /videos/finalize_upload
 
-Finalize the upload to make your video available for processing. This step validates the video against size and duration limits.
+Finalize the upload to make your video available for processing. Since validation now occurs during Step 1, this step processes much faster without Lambda metadata extraction.
 
 ### Request
 ```bash
@@ -176,15 +193,50 @@ curl -X POST "https://api.mosaic.so/videos/finalize_upload" \
 ```bash
 #!/bin/bash
 
-# Step 1: Get upload URL and policy fields
-echo "📤 Getting upload URL..."
+# Note: This example assumes you have already extracted metadata from your video file
+# Use tools like ffprobe to get width, height, duration, and file size:
+# ffprobe -v quiet -show_entries stream=width,height,duration -of csv=p=0:s=x video.mp4
+
+VIDEO_FILE="my-video.mp4"
+FILE_SIZE=$(stat -f%z "$VIDEO_FILE")  # Get file size in bytes
+WIDTH=1920  # Extract these values using ffprobe or similar tool  
+HEIGHT=1080
+DURATION_MS=30000  # Duration in milliseconds
+
+# Step 1: Get upload URL with metadata validation
+echo "📤 Getting upload URL with validation..."
 RESPONSE=$(curl -s -X POST "https://api.mosaic.so/videos/get_upload_url" \
   -H "Authorization: Bearer $MOSAIC_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "filename": "my-video.mp4",
-    "content_type": "video/mp4"
-  }')
+  -d "{
+    \"filename\": \"my-video.mp4\",
+    \"content_type\": \"video/mp4\",
+    \"file_size\": $FILE_SIZE,
+    \"width\": $WIDTH,
+    \"height\": $HEIGHT,
+    \"duration_ms\": $DURATION_MS
+  }")
+
+# Check for validation errors
+HTTP_CODE=$(curl -w "%{http_code}" -o /dev/null -s -X POST "https://api.mosaic.so/videos/get_upload_url" \
+  -H "Authorization: Bearer $MOSAIC_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"filename\": \"my-video.mp4\",
+    \"content_type\": \"video/mp4\",
+    \"file_size\": $FILE_SIZE,
+    \"width\": $WIDTH,
+    \"height\": $HEIGHT,
+    \"duration_ms\": $DURATION_MS
+  }")
+
+if [ "$HTTP_CODE" -eq 413 ]; then
+  echo "   ❌ File exceeds limits (>5GB or >90min)"
+  exit 1
+elif [ "$HTTP_CODE" -eq 400 ]; then
+  echo "   ❌ Invalid metadata (check dimensions and content type)"
+  exit 1
+fi
 
 VIDEO_ID=$(echo $RESPONSE | jq -r '.video_id')
 UPLOAD_URL=$(echo $RESPONSE | jq -r '.upload_url')
@@ -229,20 +281,52 @@ fi
 ### TypeScript Example
 
 ```typescript
-interface UploadUrlResponse {
-  video_id: string;
-  upload_url: string;
-  method: string;
-  fields: Record<string, string>;
+interface VideoMetadata {
+  width: number;
+  height: number;
+  duration_ms: number;
+  file_size: number;
 }
 
-async function uploadVideoToMosaic(
-  apiKey: string, 
-  videoFile: File
-): Promise<string> {
-  console.log('📤 Step 1: Getting upload URL...');
+async function extractVideoMetadata(file: File): Promise<VideoMetadata> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    
+    video.onloadedmetadata = () => {
+      resolve({
+        width: video.videoWidth,
+        height: video.videoHeight,
+        duration_ms: Math.round(video.duration * 1000),
+        file_size: file.size
+      });
+      URL.revokeObjectURL(video.src);
+    };
+    
+    video.onerror = () => {
+      reject(new Error('Failed to extract video metadata'));
+      URL.revokeObjectURL(video.src);
+    };
+    
+    video.src = URL.createObjectURL(file);
+  });
+}
+
+async function uploadVideoToMosaic(apiKey: string, videoFile: File): Promise<string> {
+  console.log('📊 Extracting video metadata...');
   
-  // Step 1: Get upload URL and policy fields
+  // Step 0: Extract metadata
+  let metadata: VideoMetadata;
+  try {
+    metadata = await extractVideoMetadata(videoFile);
+    console.log(`   ✅ Metadata: ${metadata.width}x${metadata.height}, ${metadata.duration_ms/1000}s, ${(metadata.file_size/(1024**2)).toFixed(1)}MB`);
+  } catch (error) {
+    throw new Error(`Failed to extract metadata: ${error}`);
+  }
+  
+  // Step 1: Get upload URL with validation
+  console.log('📤 Step 1: Getting upload URL with validation...');
+  
   const getUrlResponse = await fetch('https://api.mosaic.so/videos/get_upload_url', {
     method: 'POST',
     headers: {
@@ -251,45 +335,46 @@ async function uploadVideoToMosaic(
     },
     body: JSON.stringify({
       filename: videoFile.name,
-      content_type: videoFile.type || 'video/mp4'
+      content_type: videoFile.type || 'video/mp4',
+      file_size: metadata.file_size,
+      width: metadata.width,
+      height: metadata.height,
+      duration_ms: metadata.duration_ms
     })
   });
   
-  if (!getUrlResponse.ok) {
-    throw new Error('Failed to get upload URL');
+  if (getUrlResponse.status === 413) {
+    const error = await getUrlResponse.json();
+    throw new Error(`File exceeds limits: ${error.detail}`);
+  } else if (getUrlResponse.status === 400) {
+    const error = await getUrlResponse.json();
+    throw new Error(`Invalid metadata: ${error.detail}`);
+  } else if (!getUrlResponse.ok) {
+    throw new Error(`Failed to get upload URL: ${getUrlResponse.status}`);
   }
   
-  const { video_id, upload_url, fields }: UploadUrlResponse = await getUrlResponse.json();
+  const { video_id, upload_url, method } = await getUrlResponse.json();
   console.log(`   ✅ Got video_id: ${video_id}`);
   
-  // Step 2: Upload video with policy fields
+  // Step 2: Upload with resumable method
   console.log('⬆️  Step 2: Uploading video...');
-  console.log(`   File size: ${(videoFile.size / (1024 * 1024)).toFixed(2)} MB`);
-  
-  const formData = new FormData();
-  
-  // Add all policy fields first
-  Object.entries(fields).forEach(([key, value]) => {
-    formData.append(key, value);
-  });
-  
-  // Add file with field name "file" (must be last)
-  formData.append('file', videoFile);
   
   const uploadResponse = await fetch(upload_url, {
-    method: 'POST',
-    body: formData
+    method: method,
+    headers: {
+      'x-goog-resumable': 'start',
+      'Content-Type': videoFile.type || 'video/mp4',
+      'Content-Length': metadata.file_size.toString()
+    },
+    body: videoFile
   });
   
-  if (uploadResponse.status === 204) {
-    console.log('   ✅ Upload successful');
-  } else if (uploadResponse.status === 400) {
-    throw new Error('❌ File exceeds 5GB size limit');
-  } else {
-    throw new Error(`❌ Upload failed with status ${uploadResponse.status}`);
+  if (![200, 201, 204].includes(uploadResponse.status)) {
+    throw new Error(`Upload failed: ${uploadResponse.status}`);
   }
+  console.log('   ✅ Upload successful');
   
-  // Step 3: Finalize upload
+  // Step 3: Finalize
   console.log('✅ Step 3: Finalizing upload...');
   
   const finalizeResponse = await fetch('https://api.mosaic.so/videos/finalize_upload', {
@@ -301,30 +386,13 @@ async function uploadVideoToMosaic(
     body: JSON.stringify({ video_id })
   });
   
-  if (finalizeResponse.status === 200) {
-    console.log('   ✅ Finalization complete');
-    console.log(`🎉 Upload complete! Video ID: ${video_id}`);
-  } else if (finalizeResponse.status === 413) {
+  if (!finalizeResponse.ok) {
     const error = await finalizeResponse.json();
-    throw new Error(`❌ Video exceeds limits: ${error.detail || 'Duration > 90 minutes'}`);
-  } else {
-    throw new Error(`❌ Finalization failed with status ${finalizeResponse.status}`);
+    throw new Error(`Finalization failed: ${error.detail}`);
   }
   
-  return video_id; // Return video ID for use with agent runs
-}
-
-// Usage
-const fileInput = document.querySelector<HTMLInputElement>('#video-input');
-const file = fileInput?.files?.[0];
-
-if (file) {
-  try {
-    const videoId = await uploadVideoToMosaic('mk_your_api_key', file);
-    console.log('Upload successful! Video ID:', videoId);
-  } catch (error) {
-    console.error('Upload failed:', error);
-  }
+  console.log(`🎉 Upload complete! Video ID: ${video_id}`);
+  return video_id;
 }
 ```
 
@@ -333,52 +401,119 @@ if (file) {
 ```python
 import requests
 import os
+from moviepy.editor import VideoFileClip  # For extracting video metadata
+
+def get_video_metadata(file_path: str) -> dict:
+    """Extract metadata from video file."""
+    try:
+        with VideoFileClip(file_path) as clip:
+            return {
+                "width": clip.w,
+                "height": clip.h, 
+                "duration_ms": int(clip.duration * 1000),
+                "file_size": os.path.getsize(file_path)
+            }
+    except Exception as e:
+        raise Exception(f"Failed to extract video metadata: {e}")
 
 def upload_video_to_mosaic(api_key: str, file_path: str) -> str:
-    """Upload a video file to Mosaic using the 3-step process."""
+    """Upload a video file to Mosaic using the 3-step process with metadata validation."""
     
     headers = {"Authorization": f"Bearer {api_key}"}
-    
-    # Step 1: Get upload URL and policy fields
-    print("📤 Step 1: Getting upload URL...")
     filename = os.path.basename(file_path)
+    
+    # Step 0: Extract video metadata locally
+    print("📊 Extracting video metadata...")
+    try:
+        metadata = get_video_metadata(file_path)
+        print(f"   ✅ Metadata: {metadata['width']}x{metadata['height']}, "
+              f"{metadata['duration_ms']/1000:.1f}s, {metadata['file_size']/(1024**2):.1f}MB")
+    except Exception as e:
+        print(f"   ❌ Failed to extract metadata: {e}")
+        return None
+    
+    # Step 1: Get upload URL with metadata validation
+    print("📤 Step 1: Getting upload URL with validation...")
+    
+    # Determine content type from file extension
+    content_type_map = {
+        '.mp4': 'video/mp4',
+        '.mov': 'video/quicktime',
+        '.avi': 'video/x-msvideo',
+        '.webm': 'video/webm',
+        '.mkv': 'video/x-matroska',
+        '.m4v': 'video/x-m4v'
+    }
+    
+    file_ext = os.path.splitext(filename)[1].lower()
+    content_type = content_type_map.get(file_ext, 'video/mp4')
     
     response = requests.post(
         "https://api.mosaic.so/videos/get_upload_url",
         headers={**headers, "Content-Type": "application/json"},
         json={
             "filename": filename,
-            "content_type": "video/mp4"  # Adjust based on actual file type
+            "content_type": content_type,
+            "file_size": metadata["file_size"],
+            "width": metadata["width"],
+            "height": metadata["height"],
+            "duration_ms": metadata["duration_ms"]
         }
     )
-    response.raise_for_status()
+    
+    # Handle validation errors
+    if response.status_code == 413:
+        error_data = response.json()
+        print(f"   ❌ File exceeds limits: {error_data.get('detail', 'File too large or too long')}")
+        return None
+    elif response.status_code == 400:
+        error_data = response.json()
+        print(f"   ❌ Invalid metadata: {error_data.get('detail', 'Bad request')}")
+        return None
+    elif not response.ok:
+        print(f"   ❌ Failed to get upload URL: {response.status_code}")
+        return None
     
     upload_data = response.json()
     video_id = upload_data["video_id"]
     upload_url = upload_data["upload_url"]
-    fields = upload_data["fields"]
+    method = upload_data["method"]
     
     print(f"   ✅ Got video_id: {video_id}")
+    print(f"   ✅ Upload method: {method}")
     
-    # Step 2: Upload video with policy fields
+    # Step 2: Upload video using resumable upload
     print("⬆️  Step 2: Uploading video...")
-    file_size_mb = os.path.getsize(file_path) / (1024 * 1024)
-    print(f"   File size: {file_size_mb:.2f} MB")
     
     with open(file_path, "rb") as f:
-        # Note: 'file' field name is required, files must come after data fields
-        files = {"file": (filename, f, "video/mp4")}
-        upload_response = requests.post(upload_url, data=fields, files=files)
+        if method == "POST":
+            # Resumable upload with proper headers
+            upload_response = requests.post(
+                upload_url,
+                headers={
+                    "x-goog-resumable": "start",
+                    "Content-Type": content_type,
+                    "Content-Length": str(metadata["file_size"])
+                },
+                data=f
+            )
+        else:
+            # Fallback PUT method
+            upload_response = requests.put(
+                upload_url,
+                headers={"Content-Type": content_type},
+                data=f
+            )
     
-    if upload_response.status_code == 204:
+    if upload_response.status_code in [200, 201, 204]:
         print("   ✅ Upload successful")
-    elif upload_response.status_code == 400:
-        raise Exception("❌ File exceeds 5GB size limit")
     else:
-        raise Exception(f"❌ Upload failed with status {upload_response.status_code}")
+        print(f"   ❌ Upload failed with status {upload_response.status_code}")
+        return None
     
-    # Step 3: Finalize upload
+    # Step 3: Finalize upload (now faster without Lambda)
     print("✅ Step 3: Finalizing upload...")
+    
     finalize_response = requests.post(
         "https://api.mosaic.so/videos/finalize_upload",
         headers={**headers, "Content-Type": "application/json"},
@@ -388,33 +523,63 @@ def upload_video_to_mosaic(api_key: str, file_path: str) -> str:
     if finalize_response.status_code == 200:
         print("   ✅ Finalization complete")
         print(f"🎉 Upload complete! Video ID: {video_id}")
-    elif finalize_response.status_code == 413:
-        error = finalize_response.json()
-        raise Exception(f"❌ Video exceeds limits: {error.get('detail', 'Duration > 90 minutes')}")
+        return video_id
     else:
-        raise Exception(f"❌ Finalization failed with status {finalize_response.status_code}")
-    
-    return video_id
+        error_data = finalize_response.json()
+        print(f"   ❌ Finalization failed: {error_data.get('detail', 'Unknown error')}")
+        return None
 
-# Usage
-try:
-    video_id = upload_video_to_mosaic("mk_your_api_key", "my-video.mp4")
-    print(f"Ready to use video_id: {video_id}")
-except Exception as e:
-    print(f"Upload failed: {e}")
+# Usage example
+if __name__ == "__main__":
+    # Install required dependency: pip install moviepy
+    
+    api_key = "mk_your_api_key_here"
+    video_file = "path/to/your/video.mp4"
+    
+    try:
+        video_id = upload_video_to_mosaic(api_key, video_file)
+        if video_id:
+            print(f"✅ Success! Use video_id '{video_id}' in your agent runs")
+        else:
+            print("❌ Upload failed")
+    except Exception as e:
+        print(f"❌ Error: {e}")
 ```
+
+## Key Benefits
+
+With the new metadata validation approach, you get:
+
+- ⚡ **Faster finalization** - No more Lambda calls for metadata extraction
+- 🚀 **Immediate validation** - Fail fast before upload starts, saving time and bandwidth  
+- 💰 **Lower costs** - Reduced Lambda execution fees
+- 🔒 **Better reliability** - Fewer external dependencies in the upload pipeline
+- 📊 **Client-side control** - Extract metadata offline with full control over the process
+
+## Dependencies
+
+### Python
+```bash
+pip install moviepy requests
+```
+
+### JavaScript/TypeScript  
+Built-in HTML5 Video API (no external dependencies required)
 
 ## Best Practices
 
-1. **Error Handling**: Always check the response status before proceeding to the next step
-2. **Retry Logic**: Implement exponential backoff for network failures
-3. **Field Order**: Always add policy fields before the file in multipart uploads - GCS requires the file to be the last field
-4. **Progress Tracking**: For large files, consider implementing upload progress monitoring
-5. **Policy Expiration**: Upload URLs and policy fields expire after 1 hour - complete uploads promptly
+1. **Metadata Extraction**: Always extract video metadata locally before requesting upload URL
+2. **Error Handling**: Handle validation errors immediately at Step 1 to avoid unnecessary uploads
+3. **Retry Logic**: Implement exponential backoff for network failures
+4. **Field Order**: Always add policy fields before the file in multipart uploads - GCS requires the file to be the last field
+5. **Progress Tracking**: For large files, consider implementing upload progress monitoring
+6. **Policy Expiration**: Upload URLs and policy fields expire after 1 hour - complete uploads promptly
 
 ## What's Next?
 
 After successfully uploading your video, you can:
-- [Run an agent](/overview/agent-operations) to process your video
+- [Run an agent](/overview/agent-operations) to process your video (now faster with upfront validation!)
 - [Set up triggers](/overview/triggers) to automatically process new videos
 - [Configure webhooks](/overview/webhooks) to receive processing notifications
+
+Your videos will now process more quickly since validation happens upfront, eliminating the need for Lambda-based metadata extraction during finalization.
