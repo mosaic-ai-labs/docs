@@ -481,7 +481,7 @@
         "properties": {
           "flag": {
             "type": "string",
-            "enum": ["RUN_STARTED", "OUTPUT_FINISHED", "RUN_FINISHED"],
+            "enum": ["RUN_STARTED", "OUTPUTS_FINISHED", "RUN_FINISHED"],
             "description": "Event type"
           },
           "agent_id": {
@@ -514,34 +514,23 @@
                 },
                 "thumbnail_url": {
                   "type": "string"
+                },
+                "completed_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "When this output was completed (present in OUTPUTS_FINISHED and RUN_FINISHED events)"
                 }
               }
             },
-            "description": "Output videos (only present when status is completed)"
-          },
-          "output": {
-            "type": "object",
-            "properties": {
-              "video_url": {
-                "type": "string"
-              },
-              "thumbnail_url": {
-                "type": "string"
-              },
-              "completed_at": {
-                "type": "string",
-                "format": "date-time"
-              }
-            },
-            "description": "Single output (only present in OUTPUT_FINISHED events)"
+            "description": "Output videos (present in RUN_FINISHED events) or outputs that just finished (present in OUTPUTS_FINISHED events)"
           },
           "outputs_completed": {
             "type": "integer",
-            "description": "Number of outputs completed so far (OUTPUT_FINISHED only)"
+            "description": "Number of outputs completed so far (OUTPUTS_FINISHED only)"
           },
           "outputs_total": {
             "type": "integer",
-            "description": "Total expected outputs (OUTPUT_FINISHED only)"
+            "description": "Total expected outputs (OUTPUTS_FINISHED only)"
           },
           "triggered_by": {
             "type": "object",

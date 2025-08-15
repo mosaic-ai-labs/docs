@@ -102,7 +102,7 @@ For outputs completion (`OUTPUTS_FINISHED`):
   "agent_id": "uuid-of-agent",
   "run_id": "uuid-of-agent-state",
   "status": "running",
-  "output": [
+  "outputs": [
     {
       "video_url": "https://storage-url/path/to/video.mp4",
       "thumbnail_url": "https://storage-url/path/to/thumbnail.jpg",
@@ -132,10 +132,10 @@ For outputs completion (`OUTPUTS_FINISHED`):
 | outputs[].video_url | string | URL of the output video |
 | outputs[].thumbnail_url | string | URL of the output video thumbnail |
 | outputs[].completed_at | string | When this output was completed |
-| output | array | Array of outputs (OUTPUTS_FINISHED only) |
-| output[].video_url | string | URL of the completed output video |
-| output[].thumbnail_url | string | URL of the completed output thumbnail |
-| output[].completed_at | string | When this output was completed |
+| outputs | array | Array of outputs (OUTPUTS_FINISHED only) |
+| outputs[].video_url | string | URL of the completed output video |
+| outputs[].thumbnail_url | string | URL of the completed output thumbnail |
+| outputs[].completed_at | string | When this output was completed |
 | triggered_by | object | Optional, only present for triggered runs |
 | triggered_by.type | string | Type of trigger (e.g., `youtube`) |
 | triggered_by.channel_id | string | YouTube channel ID (RUN_FINISHED) |
@@ -275,7 +275,7 @@ def handle_mosaic_webhook(token):
             logger.info(f"Triggered by YouTube video: {youtube_info.get('title')}")
         
     elif flag == 'OUTPUTS_FINISHED':
-        outputs = data.get('output', [])  # Note: 'output' field contains an array
+        outputs = data.get('outputs', [])  # Note: 'outputs' field contains an array
         
         logger.info(f"{len(outputs)} outputs completed for run {run_id}")
         
