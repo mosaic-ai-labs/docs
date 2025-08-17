@@ -3,194 +3,312 @@ title: "Webhooks"
 description: "Receive real-time notifications for agent runs and triggers"
 ---
 
-## Overview
+This document defines the standardized webhook payloads sent by the Mosaic platform. All webhook payloads are strictly typed using Pydantic models for consistency and reliability.
 
-Mosaic supports webhooks for real-time notifications about your agent runs. Configure webhook URLs when running agents or setting up triggers to receive updates without polling.
+## Authentication
+
+All webhooks are sent with a signature in the `X-Mosaic-Signature` header when you have a webhook secret configured. The signature is an HMAC-SHA256 hash of the payload using your webhook secret.
+
+## Webhook Types
+
+Mosaic sends four types of webhooks:
+
+1. **RUN_STARTED** - Sent when an agent run begins processing
+2. **RUN_FINISHED** - Sent when an agent run completes (successfully or with failures)  
+3. **OUTPUTS_FINISHED** - Sent when individual nodes complete and produce outputs
+4. **TEST** - Sent when testing your webhook endpoint
 
 ---
 
-## Agent Run Webhooks
+## RUN_STARTED
 
-When you provide a `callback_url` in the agent run request, Mosaic will send POST requests to notify you of status changes.
+Sent immediately when an agent run begins processing. This webhook includes information about all input videos being processed.
 
-### Webhook Events
-
-Mosaic sends three types of events during an agent run:
-
-| Event | Description | When Sent |
-| --- | --- | --- |
-| RUN_STARTED | Agent has begun processing | Immediately after run starts |
-| OUTPUTS_FINISHED | Individual outputs completed | When outputs are ready |
-| RUN_FINISHED | Processing complete | When run succeeds or fails |
-
-<Tip>
-The `OUTPUTS_FINISHED` event is useful for real-time progress tracking and starting post-processing on outputs before the entire run completes.
-</Tip>
-
-### Webhook Payload
-
-The webhook payload format is the same for both manual API runs and triggered runs:
-
-For run initialization (`RUN_STARTED`):
+### Payload Structure
 
 ```json
 {
   "flag": "RUN_STARTED",
-  "agent_id": "123e4567-e89b-12d3-a456-789012345678",
-  "run_id": "7f8d9c2b-4a6e-8b3f-1d5c-9e2f3a4b5c6d",
+  "agent_id": "550e8400-e29b-41d4-a716-446655440000",
+  "run_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
   "status": "running",
   "inputs": [
     {
-      "video_id": "550e8400-e29b-41d4-a716-446655440000",
-      "video_url": "https://storage.googleapis.com/mosaic-inputs/input.mp4",
-      "thumbnail_url": "https://storage.googleapis.com/mosaic-inputs/thumb.jpg"
+      "video_id": "7ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "agent_node_id": "8ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "render_id": "9ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "video_url": "https://storage.googleapis.com/signed-url-example",
+      "thumbnail_url": "https://storage.googleapis.com/signed-url-thumbnail",
+      "video_uri": "gs://bucket/path/to/video.mp4",
+      "thumbnail_uri": "gs://bucket/path/to/thumbnail.jpg",
+      "duration_ms": 30000,
+      "width": 1920,
+      "height": 1080,
+      "file_size": 15728640
     }
   ],
-  "triggered_by": {  // Only present for triggered runs
-    "id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f",
+  "triggered_by": {
     "type": "youtube",
-    "youtube": {
-      "id": "dQw4w9WgXcQ",
-      "channel": "UCxxxxxxxxxxxxxx",
-      "title": "Never Gonna Give You Up",
-      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    }
+    "channel_id": "UC123456789",
+    "video_id": "dQw4w9WgXcQ",
+    "video_title": "Amazing Video Title",
+    "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "triggered_at": "2024-01-15T10:30:00Z",
+    "trigger_id": "aba7b810-9dad-11d1-80b4-00c04fd430c8"
   }
 }
 ```
 
-For run completion (`RUN_FINISHED`):
+### Field Descriptions
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `flag` | `"RUN_STARTED"` | Webhook type identifier |
+| `agent_id` | `string` | UUID of the agent being executed |
+| `run_id` | `string` | UUID of the agent run (same as agent_state_id) |
+| `status` | `"running"` | Current status of the run |
+| `inputs` | `VideoInput[]` | Array of input videos being processed |
+| `triggered_by` | `TriggerInfo` | Optional information about what triggered this run |
+
+---
+
+## RUN_FINISHED
+
+Sent when an agent run completes processing (successfully or with failures). This webhook includes all final outputs produced by the run.
+
+### Payload Structure
 
 ```json
 {
   "flag": "RUN_FINISHED",
-  "agent_id": "uuid-of-agent",
-  "run_id": "uuid-of-agent-state",
+  "agent_id": "550e8400-e29b-41d4-a716-446655440000",
+  "run_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
   "status": "completed",
   "inputs": [
     {
-      "file_url": "https://storage-url/path/to/input.mp4",
-      "file_name": "input_video.mp4",
-      "uploaded_at": "2024-01-15T09:00:00Z"
+      "video_id": "7ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "agent_node_id": "8ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "render_id": "9ba7b810-9dad-11d1-80b4-00c04fd430c8",
+      "video_url": "https://storage.googleapis.com/signed-url-example",
+      "thumbnail_url": "https://storage.googleapis.com/signed-url-thumbnail",
+      "duration_ms": 30000,
+      "width": 1920,
+      "height": 1080
     }
   ],
   "outputs": [
     {
-      "video_url": "https://storage-url/path/to/output.mp4",
-      "thumbnail_url": "https://storage-url/path/to/thumbnail.jpg",
-      "completed_at": "2024-01-15T10:30:00Z"
+      "video_url": "https://storage.googleapis.com/output-signed-url",
+      "thumbnail_url": "https://storage.googleapis.com/output-thumbnail-url",
+      "video_uri": "gs://bucket/path/to/output.mp4",
+      "thumbnail_uri": "gs://bucket/path/to/output-thumb.jpg",
+      "completed_at": "2024-01-15T10:35:00Z",
+      "duration_ms": 30000,
+      "file_size": 18874368,
+      "agent_node_id": "cba7b810-9dad-11d1-80b4-00c04fd430c8"
     }
-    // ... all outputs from all nodes
   ],
-  "triggered_by": {  // Optional field, only present for triggered runs
+  "triggered_by": {
     "type": "youtube",
-    "channel_id": "UC...",
-    "channel_name": "Channel Name",
+    "channel_id": "UC123456789",
     "video_id": "dQw4w9WgXcQ",
-    "video_title": "Video Title",
-    "video_url": "https://youtube.com/watch?v=dQw4w9WgXcQ",
-    "triggered_at": "2024-01-15T09:00:00Z"
+    "video_title": "Amazing Video Title",
+    "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "triggered_at": "2024-01-15T10:30:00Z",
+    "trigger_id": "aba7b810-9dad-11d1-80b4-00c04fd430c8"
   }
 }
 ```
 
-For outputs completion (`OUTPUTS_FINISHED`):
+### Field Descriptions
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `flag` | `"RUN_FINISHED"` | Webhook type identifier |
+| `agent_id` | `string` | UUID of the agent that was executed |
+| `run_id` | `string` | UUID of the agent run (same as agent_state_id) |
+| `status` | `"completed"` | Final status of the run |
+| `inputs` | `VideoInput[]` | Array of input videos that were processed |
+| `outputs` | `VideoOutput[]` | Array of final output videos produced by the run |
+| `triggered_by` | `TriggerInfo` | Optional information about what triggered this run |
+
+---
+
+## OUTPUTS_FINISHED
+
+Sent whenever an individual node in the workflow finishes processing and generates output videos. Multiple `OUTPUTS_FINISHED` webhooks may be sent during a single run.
+
+### Payload Structure
 
 ```json
 {
   "flag": "OUTPUTS_FINISHED",
-  "agent_id": "uuid-of-agent",
-  "run_id": "uuid-of-agent-state",
+  "agent_id": "550e8400-e29b-41d4-a716-446655440000",
+  "run_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
   "status": "running",
   "outputs": [
     {
-      "video_url": "https://storage-url/path/to/video.mp4",
-      "thumbnail_url": "https://storage-url/path/to/thumbnail.jpg",
-      "completed_at": "2024-01-15T10:30:00Z"
+      "video_url": "https://storage.googleapis.com/intermediate-output-url",
+      "thumbnail_url": "https://storage.googleapis.com/intermediate-thumbnail-url",
+      "video_uri": "gs://bucket/path/to/intermediate.mp4",
+      "thumbnail_uri": "gs://bucket/path/to/intermediate-thumb.jpg",
+      "completed_at": "2024-01-15T10:32:00Z",
+      "duration_ms": 25000,
+      "file_size": 12582912,
+      "agent_node_id": "dba7b810-9dad-11d1-80b4-00c04fd430c8"
     }
-    // ... more outputs if multiple videos were generated
-  ]
+  ],
+  "triggered_by": {
+    "type": "manual",
+    "source": "api",
+    "user_id": "eba7b810-9dad-11d1-80b4-00c04fd430c8",
+    "triggered_at": "2024-01-15T10:30:00Z"
+  }
 }
 ```
 
-### Payload Fields
+### Field Descriptions
 
 | Field | Type | Description |
-| --- | --- | --- |
-| flag | string | Event type: `RUN_STARTED`, `OUTPUTS_FINISHED`, or `RUN_FINISHED` |
-| agent_id | string | ID of the agent that was run |
-| run_id | string | Unique identifier for this run (internally: agent_state) |
-| status | string | Current status: `running`, `completed`, or `failed` |
-| inputs | array | Input videos that were processed (RUN_STARTED and RUN_FINISHED) |
-| inputs[].video_id | string | ID of the input video (RUN_STARTED only) |
-| inputs[].video_url | string | URL of the input video (RUN_STARTED only) |
-| inputs[].thumbnail_url | string | URL of the input video thumbnail (RUN_STARTED only) |
-| inputs[].file_url | string | URL of the input file (RUN_FINISHED only) |
-| inputs[].file_name | string | Name of the input file (RUN_FINISHED only) |
-| inputs[].uploaded_at | string | When the input was uploaded (RUN_FINISHED only) |
-| outputs | array | Output videos (RUN_FINISHED only) |
-| outputs[].video_url | string | URL of the output video |
-| outputs[].thumbnail_url | string | URL of the output video thumbnail |
-| outputs[].completed_at | string | When this output was completed |
-| outputs | array | Array of outputs (OUTPUTS_FINISHED only) |
-| outputs[].video_url | string | URL of the completed output video |
-| outputs[].thumbnail_url | string | URL of the completed output thumbnail |
-| outputs[].completed_at | string | When this output was completed |
-| triggered_by | object | Optional, only present for triggered runs |
-| triggered_by.type | string | Type of trigger (e.g., `youtube`) |
-| triggered_by.channel_id | string | YouTube channel ID (RUN_FINISHED) |
-| triggered_by.channel_name | string | YouTube channel name (RUN_FINISHED) |
-| triggered_by.video_id | string | YouTube video ID (RUN_FINISHED) |
-| triggered_by.video_title | string | Title of the YouTube video (RUN_FINISHED) |
-| triggered_by.video_url | string | URL of the YouTube video (RUN_FINISHED) |
-| triggered_by.triggered_at | string | When the trigger fired (RUN_FINISHED) |
-| triggered_by.id | string | ID of the trigger (RUN_STARTED) |
-| triggered_by.youtube | object | YouTube-specific metadata (RUN_STARTED) |
-| triggered_by.youtube.id | string | YouTube video ID (RUN_STARTED) |
-| triggered_by.youtube.channel | string | YouTube channel ID (RUN_STARTED) |
-| triggered_by.youtube.title | string | Title of the YouTube video (RUN_STARTED) |
-| triggered_by.youtube.url | string | URL of the YouTube video (RUN_STARTED) |
+|-------|------|-------------|
+| `flag` | `"OUTPUTS_FINISHED"` | Webhook type identifier |
+| `agent_id` | `string` | UUID of the agent being executed |
+| `run_id` | `string` | UUID of the agent run (same as agent_state_id) |
+| `status` | `"running"` | Current status of the overall run |
+| `outputs` | `VideoOutput[]` | Array of output videos produced by this node |
+| `triggered_by` | `TriggerInfo` | Optional information about what triggered this run |
 
 ---
 
-## Webhook Security
+## TEST
 
-### Webhook Signature Verification
+Sent when testing your webhook endpoint via the webhook testing API. This webhook helps you verify that your endpoint is working correctly.
 
-When a webhook secret is configured for your account, Mosaic includes it in the `X-Mosaic-Signature` header to verify authenticity:
+### Payload Structure
 
-```
-X-Mosaic-Signature: your_webhook_secret
-```
-
-**Note**: If no webhook secret has been configured for your account, this header will not be present.
-
-To validate webhook requests when using a secret:
-
-```python
-# Example verification
-webhook_signature = request.headers.get('X-Mosaic-Signature')
-expected_secret = os.environ.get('MOSAIC_WEBHOOK_SECRET')
-
-# If you have configured a webhook secret, validate it
-if expected_secret:
-    if webhook_signature != expected_secret:
-        return {"error": "Invalid webhook signature"}, 401
-# If no secret is configured, the header won't be present
+```json
+{
+  "flag": "TEST",
+  "run_id": "test",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "message": "This is a test webhook from Mosaic",
+  "user_id": "fba7b810-9dad-11d1-80b4-00c04fd430c8",
+  "test_data": {
+    "status": "test",
+    "description": "If you received this, your webhook endpoint is working!"
+  }
+}
 ```
 
-<Warning>
-Never expose your webhook secret in client-side code or public repositories. Treat it as a password.
-</Warning>
+### Field Descriptions
 
-### Security Best Practices
+| Field | Type | Description |
+|-------|------|-------------|
+| `flag` | `"TEST"` | Webhook type identifier |
+| `run_id` | `"test"` | Always "test" for test webhooks |
+| `timestamp` | `string` | ISO 8601 timestamp when test was sent |
+| `message` | `string` | Human-readable test message |
+| `user_id` | `string` | UUID of the user who initiated the test |
+| `test_data` | `object` | Additional test data |
 
-1. **Verify the Signature When Present**: If you've configured a webhook secret, always validate the `X-Mosaic-Signature` header
-2. **Use HTTPS**: Only use HTTPS endpoints for webhooks to prevent interception
-3. **Store Secrets Securely**: Use environment variables or a secure key management system
-4. **Handle Duplicates**: Implement idempotency to handle potential duplicate webhooks
-5. **Log Failed Attempts**: Monitor and log invalid webhook requests for security auditing
-6. **Configure a Secret**: We recommend configuring a webhook secret for production environments to ensure webhook authenticity
+---
+
+## Common Data Types
+
+### VideoInput
+
+Input video information included in webhook payloads.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `video_id` | `string` | ✅ | UUID of the video file |
+| `agent_node_id` | `string` | ✅ | UUID of the agent node processing this video |
+| `render_id` | `string` | ✅ | UUID of the render record |
+| `video_url` | `string` | ❌ | Signed URL to access the video file (expires after 1 hour) |
+| `thumbnail_url` | `string` | ❌ | Signed URL to access the video thumbnail |
+| `video_uri` | `string` | ❌ | Storage URI (GCS/S3) of the video |
+| `thumbnail_uri` | `string` | ❌ | Storage URI (GCS/S3) of the thumbnail |
+| `duration_ms` | `integer` | ❌ | Video duration in milliseconds |
+| `width` | `integer` | ❌ | Video width in pixels |
+| `height` | `integer` | ❌ | Video height in pixels |
+| `file_size` | `integer` | ❌ | File size in bytes |
+
+### VideoOutput
+
+Output video information included in webhook payloads.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `video_url` | `string` | ✅ | Signed URL to download the rendered video (expires after 1 hour) |
+| `thumbnail_url` | `string` | ❌ | Signed URL to download the video thumbnail |
+| `video_uri` | `string` | ❌ | Storage URI (GCS/S3) of the rendered video |
+| `thumbnail_uri` | `string` | ❌ | Storage URI (GCS/S3) of the thumbnail |
+| `completed_at` | `string` | ✅ | ISO 8601 timestamp when rendering completed |
+| `duration_ms` | `integer` | ❌ | Rendered video duration in milliseconds |
+| `file_size` | `integer` | ❌ | File size in bytes |
+| `agent_node_id` | `string` | ❌ | UUID of the agent node that produced this output |
+
+### TriggerInfo
+
+Information about what triggered the agent run. The structure varies by trigger type.
+
+#### YouTube Trigger
+
+```json
+{
+  "type": "youtube",
+  "channel_id": "UC123456789",
+  "video_id": "dQw4w9WgXcQ",
+  "video_title": "Amazing Video Title",
+  "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "triggered_at": "2024-01-15T10:30:00Z",
+  "trigger_id": "aba7b810-9dad-11d1-80b4-00c04fd430c8"
+}
+```
+
+#### Schedule Trigger
+
+```json
+{
+  "type": "schedule",
+  "scheduled_at": "2024-01-15T10:30:00Z",
+  "schedule_id": "schedule-uuid",
+  "cron_expression": "0 10 * * *"
+}
+```
+
+#### Manual Trigger
+
+```json
+{
+  "type": "manual",
+  "source": "api",
+  "user_id": "user-uuid",
+  "triggered_at": "2024-01-15T10:30:00Z"
+}
+```
+
+---
+
+## Webhook Response
+
+Your webhook endpoint should return a JSON response with HTTP status 200-299 to indicate successful receipt. The response format is optional, but we recommend:
+
+```json
+{
+  "received": true,
+  "message": "Webhook processed successfully",
+  "processed_at": "2024-01-15T10:30:05Z"
+}
+```
+
+---
+
+## Error Handling
+
+- Webhook delivery will be retried up to 3 times with exponential backoff if your endpoint returns a non-2xx status code
+- Webhooks will timeout after 30 seconds
+- Failed webhooks are logged and can be viewed in your dashboard
 
 ---
 
@@ -226,148 +344,105 @@ curl -X POST "https://api.mosaic.so/agent/[agent_id]/triggers/lowest_youtube_id/
 
 ---
 
-## Example Webhook Handler
+## TypeScript Types
 
-Here's a simple webhook handler in Python using Flask:
+For TypeScript users, here are the type definitions:
 
-```python
-from flask import Flask, request, jsonify
-import logging
-import os
+```typescript
+type WebhookFlag = 'RUN_STARTED' | 'RUN_FINISHED' | 'OUTPUTS_FINISHED' | 'TEST';
 
-app = Flask(__name__)
-logger = logging.getLogger(__name__)
+interface VideoInput {
+  video_id: string;
+  agent_node_id: string;
+  render_id: string;
+  video_url?: string;
+  thumbnail_url?: string;
+  video_uri?: string;
+  thumbnail_uri?: string;
+  duration_ms?: number;
+  width?: number;
+  height?: number;
+  file_size?: number;
+}
 
-MOSAIC_WEBHOOK_SECRET = os.environ.get('MOSAIC_WEBHOOK_SECRET')
+interface VideoOutput {
+  video_url: string;
+  thumbnail_url?: string;
+  video_uri?: string;
+  thumbnail_uri?: string;
+  completed_at: string;
+  duration_ms?: number;
+  file_size?: number;
+  agent_node_id?: string;
+}
 
-@app.route('/webhooks/mosaic/<token>', methods=['POST'])
-def handle_mosaic_webhook(token):
-    # Verify webhook signature from Mosaic (if configured)
-    webhook_signature = request.headers.get('X-Mosaic-Signature')
-    
-    # If we have a configured secret, validate it
-    if MOSAIC_WEBHOOK_SECRET:
-        if webhook_signature != MOSAIC_WEBHOOK_SECRET:
-            logger.warning("Invalid or missing webhook signature")
-            return jsonify({"error": "Invalid webhook signature"}), 401
-    # Note: If no secret is configured, X-Mosaic-Signature header won't be present
-    
-    # Verify URL token (optional additional security)
-    if token != os.environ.get('URL_TOKEN'):
-        return jsonify({"error": "Invalid token"}), 401
-    
-    # Parse webhook data
-    data = request.json
-    flag = data.get('flag')
-    run_id = data.get('run_id')
-    status = data.get('status')
-    
-    # Handle different events
-    if flag == 'RUN_STARTED':
-        inputs = data.get('inputs', [])
-        triggered_by = data.get('triggered_by')
-        
-        logger.info(f"Agent run {run_id} started with {len(inputs)} inputs")
-        
-        # Check if this was triggered by YouTube
-        if triggered_by and triggered_by.get('type') == 'youtube':
-            youtube_info = triggered_by.get('youtube', {})
-            logger.info(f"Triggered by YouTube video: {youtube_info.get('title')}")
-        
-    elif flag == 'OUTPUTS_FINISHED':
-        outputs = data.get('outputs', [])  # Note: 'outputs' field contains an array
-        
-        logger.info(f"{len(outputs)} outputs completed for run {run_id}")
-        
-        # Process each output
-        for output in outputs:
-            video_url = output.get('video_url')
-            thumbnail_url = output.get('thumbnail_url')
-            completed_at = output.get('completed_at')
-            # Process this output immediately (e.g., start post-processing)
-        
-    elif flag == 'RUN_FINISHED':
-        if status == 'completed':
-            inputs = data.get('inputs', [])
-            outputs = data.get('outputs', [])
-            triggered_by = data.get('triggered_by')
-            
-            logger.info(f"Agent run {run_id} completed")
-            logger.info(f"Processed {len(inputs)} inputs, generated {len(outputs)} outputs")
-            
-            # Check if this was a triggered run
-            if triggered_by:
-                if triggered_by.get('type') == 'youtube':
-                    logger.info(f"Triggered by YouTube video: {triggered_by.get('video_title')}")
-            
-            # Process all outputs
-            for output in outputs:
-                video_url = output.get('video_url')
-                thumbnail_url = output.get('thumbnail_url')
-                completed_at = output.get('completed_at')
-                # Final processing, cleanup, notifications
-                
-        elif status == 'failed':
-            logger.error(f"Agent run {run_id} failed")
-            # Handle failure, notify, etc.
-    
-    # Always return 200 to acknowledge receipt
-    return jsonify({"received": True}), 200
+interface YouTubeTriggerInfo {
+  type: 'youtube';
+  channel_id: string;
+  video_id: string;
+  video_title: string;
+  video_url: string;
+  triggered_at: string;
+  trigger_id: string;
+}
 
-if __name__ == '__main__':
-    app.run(port=3000)
-```
+interface ScheduleTriggerInfo {
+  type: 'schedule';
+  scheduled_at: string;
+  schedule_id: string;
+  cron_expression?: string;
+}
 
----
+interface ManualTriggerInfo {
+  type: 'manual';
+  source: 'api' | 'ui';
+  user_id: string;
+  triggered_at: string;
+}
 
-## Testing Webhooks
+type TriggerInfo = YouTubeTriggerInfo | ScheduleTriggerInfo | ManualTriggerInfo;
 
-### Using ngrok for Local Development
+interface RunStartedWebhook {
+  flag: 'RUN_STARTED';
+  agent_id: string;
+  run_id: string;
+  status: 'running';
+  inputs: VideoInput[];
+  triggered_by?: TriggerInfo;
+}
 
-```bash
-# Install ngrok
-brew install ngrok  # macOS
-# or download from https://ngrok.com
+interface RunFinishedWebhook {
+  flag: 'RUN_FINISHED';
+  agent_id: string;
+  run_id: string;
+  status: 'completed';
+  inputs: VideoInput[];
+  outputs: VideoOutput[];
+  triggered_by?: TriggerInfo;
+}
 
-# Start your local webhook server
-python webhook_handler.py
+interface OutputsFinishedWebhook {
+  flag: 'OUTPUTS_FINISHED';
+  agent_id: string;
+  run_id: string;
+  status: 'running';
+  outputs: VideoOutput[];
+  triggered_by?: TriggerInfo;
+}
 
-# In another terminal, expose it to the internet
-ngrok http 3000
+interface TestWebhook {
+  flag: 'TEST';
+  run_id: 'test';
+  timestamp: string;
+  message: string;
+  user_id: string;
+  test_data: {
+    status: 'test';
+    description: string;
+  };
+}
 
-# Use the ngrok URL for testing
-# https://abc123.ngrok.io/webhooks/mosaic/your-token
-```
-
-### Webhook Testing Service
-
-You can use [webhook.site](https://webhook.site) to inspect webhook payloads during development.
-
----
-
-## Common Issues
-
-### Webhook Not Received
-
-1. **Check URL**: Ensure the URL is publicly accessible
-2. **Check HTTPS**: Some environments require HTTPS
-3. **Check Response**: Your handler must return a 2xx status
-4. **Check Logs**: Review your server logs for any errors
-
-### Duplicate Webhooks
-
-Implement idempotency using the `run_id`:
-
-```python
-processed_runs = set()
-
-def handle_webhook(data):
-    run_id = data['run_id']
-    if run_id in processed_runs:
-        return  # Already processed
-    
-    processed_runs.add(run_id)
-    # Process webhook...
+type WebhookPayload = RunStartedWebhook | RunFinishedWebhook | OutputsFinishedWebhook | TestWebhook;
 ```
 
 ---
