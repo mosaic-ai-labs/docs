@@ -7,7 +7,20 @@ This document defines the standardized webhook payloads sent by the Mosaic platf
 
 ## Authentication
 
-All webhooks are sent with a signature in the `X-Mosaic-Signature` header when you have a webhook secret configured. The signature is an HMAC-SHA256 hash of the payload using your webhook secret.
+All webhooks are sent with a signature in the `X-Mosaic-Signature` header when you have a webhook secret configured. The signature is your webhook secret sent as a **plaintext string** for simple validation.
+
+**Important**: This is NOT encryption or hashing - it's a direct plaintext string comparison for authentication.
+
+### Signature Validation Example
+
+```python
+# Simple plaintext validation
+webhook_signature = request.headers.get('X-Mosaic-Signature')
+expected_secret = os.environ.get('MOSAIC_WEBHOOK_SECRET')
+
+if expected_secret and webhook_signature != expected_secret:
+    return {"error": "Invalid webhook signature"}, 401
+```
 
 ## Webhook Types
 
