@@ -574,10 +574,6 @@
       "VideoInput": {
         "type": "object",
         "properties": {
-          "video_id": {
-            "type": "string",
-            "description": "ID of the input video"
-          },
           "video_url": {
             "type": "string",
             "description": "URL of the input video"

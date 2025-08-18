@@ -47,17 +47,8 @@ Sent immediately when an agent run begins processing. This webhook includes info
   "status": "running",
   "inputs": [
     {
-      "video_id": "7ba7b810-9dad-11d1-80b4-00c04fd430c8",
-      "agent_node_id": "8ba7b810-9dad-11d1-80b4-00c04fd430c8",
-      "render_id": "9ba7b810-9dad-11d1-80b4-00c04fd430c8",
       "video_url": "https://storage.googleapis.com/signed-url-example",
-      "thumbnail_url": "https://storage.googleapis.com/signed-url-thumbnail",
-      "video_uri": "gs://bucket/path/to/video.mp4",
-      "thumbnail_uri": "gs://bucket/path/to/thumbnail.jpg",
-      "duration_ms": 30000,
-      "width": 1920,
-      "height": 1080,
-      "file_size": 15728640
+      "thumbnail_url": "https://storage.googleapis.com/signed-url-thumbnail"
     }
   ],
   "triggered_by": {
@@ -99,26 +90,15 @@ Sent when an agent run completes processing (successfully or with failures). Thi
   "status": "completed",
   "inputs": [
     {
-      "video_id": "7ba7b810-9dad-11d1-80b4-00c04fd430c8",
-      "agent_node_id": "8ba7b810-9dad-11d1-80b4-00c04fd430c8",
-      "render_id": "9ba7b810-9dad-11d1-80b4-00c04fd430c8",
       "video_url": "https://storage.googleapis.com/signed-url-example",
-      "thumbnail_url": "https://storage.googleapis.com/signed-url-thumbnail",
-      "duration_ms": 30000,
-      "width": 1920,
-      "height": 1080
+      "thumbnail_url": "https://storage.googleapis.com/signed-url-thumbnail"
     }
   ],
   "outputs": [
     {
       "video_url": "https://storage.googleapis.com/output-signed-url",
       "thumbnail_url": "https://storage.googleapis.com/output-thumbnail-url",
-      "video_uri": "gs://bucket/path/to/output.mp4",
-      "thumbnail_uri": "gs://bucket/path/to/output-thumb.jpg",
-      "completed_at": "2024-01-15T10:35:00Z",
-      "duration_ms": 30000,
-      "file_size": 18874368,
-      "agent_node_id": "cba7b810-9dad-11d1-80b4-00c04fd430c8"
+      "completed_at": "2024-01-15T10:35:00Z"
     }
   ],
   "triggered_by": {
@@ -163,12 +143,7 @@ Sent whenever an individual node in the workflow finishes processing and generat
     {
       "video_url": "https://storage.googleapis.com/intermediate-output-url",
       "thumbnail_url": "https://storage.googleapis.com/intermediate-thumbnail-url",
-      "video_uri": "gs://bucket/path/to/intermediate.mp4",
-      "thumbnail_uri": "gs://bucket/path/to/intermediate-thumb.jpg",
-      "completed_at": "2024-01-15T10:32:00Z",
-      "duration_ms": 25000,
-      "file_size": 12582912,
-      "agent_node_id": "dba7b810-9dad-11d1-80b4-00c04fd430c8"
+      "completed_at": "2024-01-15T10:32:00Z"
     }
   ],
   "triggered_by": {
@@ -234,17 +209,8 @@ Input video information included in webhook payloads.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `video_id` | `string` | ✅ | UUID of the video file |
-| `agent_node_id` | `string` | ✅ | UUID of the agent node processing this video |
-| `render_id` | `string` | ✅ | UUID of the render record |
-| `video_url` | `string` | ❌ | Signed URL to access the video file (expires after 1 hour) |
-| `thumbnail_url` | `string` | ❌ | Signed URL to access the video thumbnail |
-| `video_uri` | `string` | ❌ | Storage URI (GCS/S3) of the video |
-| `thumbnail_uri` | `string` | ❌ | Storage URI (GCS/S3) of the thumbnail |
-| `duration_ms` | `integer` | ❌ | Video duration in milliseconds |
-| `width` | `integer` | ❌ | Video width in pixels |
-| `height` | `integer` | ❌ | Video height in pixels |
-| `file_size` | `integer` | ❌ | File size in bytes |
+| `video_url` | `string` | ✅ | Signed URL to access the video file (expires after 1 hour) |
+| `thumbnail_url` | `string` | ✅ | Signed URL to access the video thumbnail |
 
 ### VideoOutput
 
@@ -253,13 +219,8 @@ Output video information included in webhook payloads.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `video_url` | `string` | ✅ | Signed URL to download the rendered video (expires after 1 hour) |
-| `thumbnail_url` | `string` | ❌ | Signed URL to download the video thumbnail |
-| `video_uri` | `string` | ❌ | Storage URI (GCS/S3) of the rendered video |
-| `thumbnail_uri` | `string` | ❌ | Storage URI (GCS/S3) of the thumbnail |
+| `thumbnail_url` | `string` | ✅ | Signed URL to download the video thumbnail |
 | `completed_at` | `string` | ✅ | ISO 8601 timestamp when rendering completed |
-| `duration_ms` | `integer` | ❌ | Rendered video duration in milliseconds |
-| `file_size` | `integer` | ❌ | File size in bytes |
-| `agent_node_id` | `string` | ❌ | UUID of the agent node that produced this output |
 
 ### TriggerInfo
 
@@ -365,28 +326,14 @@ For TypeScript users, here are the type definitions:
 type WebhookFlag = 'RUN_STARTED' | 'RUN_FINISHED' | 'OUTPUTS_FINISHED' | 'TEST';
 
 interface VideoInput {
-  video_id: string;
-  agent_node_id: string;
-  render_id: string;
-  video_url?: string;
-  thumbnail_url?: string;
-  video_uri?: string;
-  thumbnail_uri?: string;
-  duration_ms?: number;
-  width?: number;
-  height?: number;
-  file_size?: number;
+  video_url: string;
+  thumbnail_url: string;
 }
 
 interface VideoOutput {
   video_url: string;
-  thumbnail_url?: string;
-  video_uri?: string;
-  thumbnail_uri?: string;
+  thumbnail_url: string;
   completed_at: string;
-  duration_ms?: number;
-  file_size?: number;
-  agent_node_id?: string;
 }
 
 interface YouTubeTriggerInfo {
