@@ -481,7 +481,7 @@
         "properties": {
           "flag": {
             "type": "string",
-            "enum": ["RUN_STARTED", "OUTPUTS_FINISHED", "RUN_FINISHED"],
+            "enum": ["RUN_STARTED", "RUN_FINISHED"],
             "description": "Event type"
           },
           "agent_id": {
@@ -518,19 +518,11 @@
                 "completed_at": {
                   "type": "string",
                   "format": "date-time",
-                  "description": "When this output was completed (present in OUTPUTS_FINISHED and RUN_FINISHED events)"
+                  "description": "When this output was completed (present in RUN_FINISHED events)"
                 }
               }
             },
-            "description": "Output videos (present in RUN_FINISHED events) or outputs that just finished (present in OUTPUTS_FINISHED events)"
-          },
-          "outputs_completed": {
-            "type": "integer",
-            "description": "Number of outputs completed so far (OUTPUTS_FINISHED only)"
-          },
-          "outputs_total": {
-            "type": "integer",
-            "description": "Total expected outputs (OUTPUTS_FINISHED only)"
+            "description": "Output videos (present in RUN_FINISHED events)"
           },
           "triggered_by": {
             "type": "object",

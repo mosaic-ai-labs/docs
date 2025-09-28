@@ -24,12 +24,11 @@ if expected_secret and webhook_signature != expected_secret:
 
 ## Webhook Types
 
-Mosaic sends four types of webhooks:
+Mosaic sends three types of webhooks:
 
 1. **RUN_STARTED** - Sent when an agent run begins processing
 2. **RUN_FINISHED** - Sent when an agent run completes (successfully or with failures)  
-3. **OUTPUTS_FINISHED** - Sent when individual nodes complete and produce outputs
-4. **TEST** - Sent when testing your webhook endpoint
+3. **TEST** - Sent when testing your webhook endpoint
 
 ---
 
@@ -123,47 +122,6 @@ Sent when an agent run completes processing (successfully or with failures). Thi
 | `status` | `"completed"` | Final status of the run |
 | `inputs` | `VideoInput[]` | Array of input videos that were processed |
 | `outputs` | `VideoOutput[]` | Array of final output videos produced by the run |
-| `triggered_by` | `TriggerInfo` | Optional information about what triggered this run |
-
----
-
-## OUTPUTS_FINISHED
-
-Sent whenever an individual node in the workflow finishes processing and generates output videos. Multiple `OUTPUTS_FINISHED` webhooks may be sent during a single run.
-
-### Payload Structure
-
-```json
-{
-  "flag": "OUTPUTS_FINISHED",
-  "agent_id": "550e8400-e29b-41d4-a716-446655440000",
-  "run_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
-  "status": "running",
-  "outputs": [
-    {
-      "video_url": "https://storage.googleapis.com/intermediate-output-url",
-      "thumbnail_url": "https://storage.googleapis.com/intermediate-thumbnail-url",
-      "completed_at": "2024-01-15T10:32:00Z"
-    }
-  ],
-  "triggered_by": {
-    "type": "manual",
-    "source": "api",
-    "user_id": "eba7b810-9dad-11d1-80b4-00c04fd430c8",
-    "triggered_at": "2024-01-15T10:30:00Z"
-  }
-}
-```
-
-### Field Descriptions
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `flag` | `"OUTPUTS_FINISHED"` | Webhook type identifier |
-| `agent_id` | `string` | UUID of the agent being executed |
-| `run_id` | `string` | UUID of the agent run (same as agent_state_id) |
-| `status` | `"running"` | Current status of the overall run |
-| `outputs` | `VideoOutput[]` | Array of output videos produced by this node |
 | `triggered_by` | `TriggerInfo` | Optional information about what triggered this run |
 
 ---
@@ -323,7 +281,7 @@ curl -X POST "https://api.mosaic.so/agent/[agent_id]/triggers/lowest_youtube_id/
 For TypeScript users, here are the type definitions:
 
 ```typescript
-type WebhookFlag = 'RUN_STARTED' | 'RUN_FINISHED' | 'OUTPUTS_FINISHED' | 'TEST';
+type WebhookFlag = 'RUN_STARTED' | 'RUN_FINISHED' | 'TEST';
 
 interface VideoInput {
   video_url: string;
@@ -381,15 +339,6 @@ interface RunFinishedWebhook {
   triggered_by?: TriggerInfo;
 }
 
-interface OutputsFinishedWebhook {
-  flag: 'OUTPUTS_FINISHED';
-  agent_id: string;
-  run_id: string;
-  status: 'running';
-  outputs: VideoOutput[];
-  triggered_by?: TriggerInfo;
-}
-
 interface TestWebhook {
   flag: 'TEST';
   run_id: 'test';
@@ -402,7 +351,7 @@ interface TestWebhook {
   };
 }
 
-type WebhookPayload = RunStartedWebhook | RunFinishedWebhook | OutputsFinishedWebhook | TestWebhook;
+type WebhookPayload = RunStartedWebhook | RunFinishedWebhook | TestWebhook;
 ```
 
 ---
