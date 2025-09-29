@@ -494,7 +494,7 @@
           },
           "status": {
             "type": "string",
-            "enum": ["running", "completed", "failed"],
+            "enum": ["completed", "partial_complete", "failed"],
             "description": "Current status"
           },
           "inputs": {

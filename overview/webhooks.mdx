@@ -119,10 +119,18 @@ Sent when an agent run completes processing (successfully or with failures). Thi
 | `flag` | `"RUN_FINISHED"` | Webhook type identifier |
 | `agent_id` | `string` | UUID of the agent that was executed |
 | `run_id` | `string` | UUID of the agent run (same as agent_state_id) |
-| `status` | `"completed"` | Final status of the run |
+| `status` | `"completed"` \| `"partial_complete"` \| `"failed"` | Final status of the run |
 | `inputs` | `VideoInput[]` | Array of input videos that were processed |
 | `outputs` | `VideoOutput[]` | Array of final output videos produced by the run |
 | `triggered_by` | `TriggerInfo` | Optional information about what triggered this run |
+
+#### Status Values
+
+The `status` field can have the following values:
+
+- **`"completed"`** - All videos processed successfully with outputs generated
+- **`"partial_complete"`** - Some videos processed successfully, but others failed  
+- **`"failed"`** - The entire run failed, no outputs generated
 
 ---
 
@@ -333,7 +341,7 @@ interface RunFinishedWebhook {
   flag: 'RUN_FINISHED';
   agent_id: string;
   run_id: string;
-  status: 'completed';
+  status: 'completed' | 'partial_complete' | 'failed';
   inputs: VideoInput[];
   outputs: VideoOutput[];
   triggered_by?: TriggerInfo;
