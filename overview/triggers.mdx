@@ -109,20 +109,18 @@ When a trigger detects new content and starts an agent run, webhooks are sent to
   "status": "running",
   "inputs": [
     {
-      "video_id": "youtube_dQw4w9WgXcQ",
-      "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-      "thumbnail_url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg"
+      "video_url": "https://storage.googleapis.com/.../input.mp4",
+      "thumbnail_url": "https://storage.googleapis.com/.../input-thumb.jpg"
     }
   ],
   "triggered_by": {
-    "id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f",
     "type": "youtube",
-    "youtube": {
-      "id": "dQw4w9WgXcQ",
-      "channel": "UCxxxxxxxxxxxxxx",
-      "title": "Never Gonna Give You Up",
-      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    }
+    "channel_id": "UCxxxxxxxxxxxxxx",
+    "video_id": "dQw4w9WgXcQ",
+    "video_title": "Never Gonna Give You Up",
+    "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "triggered_at": "2024-01-15T10:30:00Z",
+    "trigger_id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f"
   }
 }
 ```
@@ -137,26 +135,25 @@ When the run completes:
   "status": "completed",
   "inputs": [
     {
-      "video_id": "youtube_dQw4w9WgXcQ",
-      "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-      "thumbnail_url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg"
+      "video_url": "https://storage.googleapis.com/.../input.mp4",
+      "thumbnail_url": "https://storage.googleapis.com/.../input-thumb.jpg"
     }
   ],
   "outputs": [
     {
-      "video_url": "https://storage.googleapis.com/mosaic-outputs/output.mp4",
-      "thumbnail_url": "https://storage.googleapis.com/mosaic-thumbnails/thumb.jpg"
+      "video_url": "https://storage.googleapis.com/.../output.mp4",
+      "thumbnail_url": "https://storage.googleapis.com/.../thumb.jpg",
+      "completed_at": "2024-01-15T10:35:00Z"
     }
   ],
   "triggered_by": {
-    "id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f",
     "type": "youtube",
-    "youtube": {
-      "id": "dQw4w9WgXcQ",
-      "channel": "UCxxxxxxxxxxxxxx",
-      "title": "Never Gonna Give You Up",
-      "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-    }
+    "channel_id": "UCxxxxxxxxxxxxxx",
+    "video_id": "dQw4w9WgXcQ",
+    "video_title": "Never Gonna Give You Up",
+    "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "triggered_at": "2024-01-15T10:30:00Z",
+    "trigger_id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f"
   }
 }
 ```

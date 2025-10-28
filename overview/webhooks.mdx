@@ -41,23 +41,23 @@ Sent immediately when an agent run begins processing. This webhook includes info
 ```json
 {
   "flag": "RUN_STARTED",
-  "agent_id": "550e8400-e29b-41d4-a716-446655440000",
-  "run_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+  "agent_id": "123e4567-e89b-12d3-a456-789012345678",
+  "run_id": "7f8d9c2b-4a6e-8b3f-1d5c-9e2f3a4b5c6d",
   "status": "running",
   "inputs": [
     {
-      "video_url": "https://storage.googleapis.com/signed-url-example",
-      "thumbnail_url": "https://storage.googleapis.com/signed-url-thumbnail"
+      "video_url": "https://storage.googleapis.com/.../input.mp4",
+      "thumbnail_url": "https://storage.googleapis.com/.../input-thumb.jpg"
     }
   ],
   "triggered_by": {
     "type": "youtube",
-    "channel_id": "UC123456789",
+    "channel_id": "UCxxxxxxxxxxxxxx",
     "video_id": "dQw4w9WgXcQ",
-    "video_title": "Amazing Video Title",
+    "video_title": "Never Gonna Give You Up",
     "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     "triggered_at": "2024-01-15T10:30:00Z",
-    "trigger_id": "aba7b810-9dad-11d1-80b4-00c04fd430c8"
+    "trigger_id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f"
   }
 }
 ```
@@ -84,30 +84,30 @@ Sent when an agent run completes processing (successfully or with failures). Thi
 ```json
 {
   "flag": "RUN_FINISHED",
-  "agent_id": "550e8400-e29b-41d4-a716-446655440000",
-  "run_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+  "agent_id": "123e4567-e89b-12d3-a456-789012345678",
+  "run_id": "7f8d9c2b-4a6e-8b3f-1d5c-9e2f3a4b5c6d",
   "status": "completed",
   "inputs": [
     {
-      "video_url": "https://storage.googleapis.com/signed-url-example",
-      "thumbnail_url": "https://storage.googleapis.com/signed-url-thumbnail"
+      "video_url": "https://storage.googleapis.com/.../input.mp4",
+      "thumbnail_url": "https://storage.googleapis.com/.../input-thumb.jpg"
     }
   ],
   "outputs": [
     {
-      "video_url": "https://storage.googleapis.com/output-signed-url",
-      "thumbnail_url": "https://storage.googleapis.com/output-thumbnail-url",
+      "video_url": "https://storage.googleapis.com/.../output.mp4",
+      "thumbnail_url": "https://storage.googleapis.com/.../thumb.jpg",
       "completed_at": "2024-01-15T10:35:00Z"
     }
   ],
   "triggered_by": {
     "type": "youtube",
-    "channel_id": "UC123456789",
+    "channel_id": "UCxxxxxxxxxxxxxx",
     "video_id": "dQw4w9WgXcQ",
-    "video_title": "Amazing Video Title",
+    "video_title": "Never Gonna Give You Up",
     "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     "triggered_at": "2024-01-15T10:30:00Z",
-    "trigger_id": "aba7b810-9dad-11d1-80b4-00c04fd430c8"
+    "trigger_id": "8f7d6c5b-4a3e-2b1f-9d8c-1a2b3c4d5e6f"
   }
 }
 ```
@@ -123,6 +123,8 @@ Sent when an agent run completes processing (successfully or with failures). Thi
 | `inputs` | `VideoInput[]` | Array of input videos that were processed |
 | `outputs` | `VideoOutput[]` | Array of final output videos produced by the run |
 | `triggered_by` | `TriggerInfo` | Optional information about what triggered this run |
+
+Triggered_by in RUN_STARTED and RUN_FINISHED is identical.
 
 #### Status Values
 
