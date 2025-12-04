@@ -113,7 +113,7 @@
     "/agent/{agent_id}/run": {
       "post": {
         "summary": "Run an agent",
-        "description": "Execute an agent workflow on uploaded videos",
+        "description": "Execute an agent workflow on uploaded videos or videos from signed URLs. You can use either `video_ids` (for previously uploaded videos) or `signed_urls` (for external video URLs). The signed URL will be automatically downloaded, uploaded to your storage, and processed.",
         "operationId": "runAgent",
         "tags": ["Agents"],
         "parameters": [
@@ -132,21 +132,57 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "video_ids": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "video_ids": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Array of video IDs to process (for previously uploaded videos)"
+                      },
+                      "callback_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "Optional webhook URL for status updates"
+                      },
+                      "update_params": {
+                        "type": "object",
+                        "description": "Optional parameters to override node parameters in the agent workflow",
+                        "additionalProperties": true
+                      }
                     },
-                    "description": "Array of video IDs to process"
+                    "required": ["video_ids"],
+                    "additionalProperties": false
                   },
-                  "callback_url": {
-                    "type": "string",
-                    "description": "Optional webhook URL for status updates"
+                  {
+                    "type": "object",
+                    "properties": {
+                      "signed_urls": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "description": "Array of signed URLs (HTTP/HTTPS) pointing to videos to process. Max file size: 5 GB, Max duration: 1 hour. The video will be downloaded, uploaded to your storage, and processed automatically."
+                      },
+                      "callback_url": {
+                        "type": "string",
+                        "format": "uri",
+                        "description": "Optional webhook URL for status updates"
+                      },
+                      "update_params": {
+                        "type": "object",
+                        "description": "Optional parameters to override node parameters in the agent workflow",
+                        "additionalProperties": true
+                      }
+                    },
+                    "required": ["signed_urls"],
+                    "additionalProperties": false
                   }
-                },
-                "required": ["video_ids"]
+                ]
               }
             }
           }

@@ -15,9 +15,12 @@ First, create an agent on [app.mosaic.so](https://app.mosaic.so). Once created, 
 
 ## POST /agent/[agent_id]/run
 
-Execute an agent workflow on one or more uploaded videos.
+Execute an agent workflow on one or more uploaded videos or videos from signed URLs.
 
-### Request
+### Running with Video IDs
+
+Use `video_ids` when you've already uploaded videos to Mosaic:
+
 ```bash
 curl -X POST "https://api.mosaic.so/agent/[agent_id]/run" \
   -H "Authorization: Bearer mk_your_api_key" \
@@ -28,12 +31,55 @@ curl -X POST "https://api.mosaic.so/agent/[agent_id]/run" \
   }'
 ```
 
+### Running with Signed URLs
+
+You can also run agents directly with signed URLs pointing to external videos. The backend will automatically download the video, upload it to your storage, create a video record, and run the agent workflow.
+
+```bash
+curl -X POST "https://api.mosaic.so/agent/[agent_id]/run" \
+  -H "Authorization: Bearer mk_your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "signed_urls": ["https://storage.example.com/video.mp4?signature=..."],
+    "callback_url": "https://your-webhook.com/callback",
+    "update_params": {}
+  }'
+```
+
 ### Parameters
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| video_ids | string[] | ✅ | Array of video IDs to process |
+| video_ids | string[] | ✅* | Array of video IDs to process (for previously uploaded videos) |
+| signed_urls | string[] | ✅* | Array of signed URLs (HTTP/HTTPS) pointing to videos to process |
 | callback_url | string | | Optional webhook URL for status updates |
+| update_params | object | | Optional parameters to override node parameters in the agent workflow |
+
+\* Either `video_ids` or `signed_urls` must be provided, but not both.
+
+### Signed URL Requirements & Limits
+
+When using `signed_urls`, the following requirements apply:
+
+- **Protocol**: Must be HTTP or HTTPS
+- **Max file size**: 5 GB
+- **Max duration**: 1 hour
+
+### What Happens Behind the Scenes
+
+When you provide `signed_urls`, the backend:
+
+1. Validates the signed URL (must be HTTP/HTTPS)
+2. Downloads the video from the signed URL
+3. Extracts metadata (duration, resolution, etc.)
+4. Validates file size (max 5 GB) and duration (max 1 hour)
+5. Uploads the video to your storage (GCS/S3)
+6. Creates a video record in the database
+7. Sets up transcoding
+8. Queues embedding task
+9. Creates agent state and runs the workflow
+
+The signed URL is automatically converted to a video record, so the rest of the workflow treats it like any other video input.
 
 ### Response
 ```json
@@ -43,6 +89,28 @@ curl -X POST "https://api.mosaic.so/agent/[agent_id]/run" \
 ```
 
 The `run_id` is used to track the progress of your agent run.
+
+### Example Usage
+
+```python
+import requests
+
+url = "https://api.mosaic.so/agent/{agent_id}/run"
+headers = {
+    "Authorization": "Bearer mk_your_api_key",
+    "Content-Type": "application/json"
+}
+
+# Using signed URLs
+payload = {
+    "signed_urls": ["https://storage.example.com/video.mp4?signature=..."],
+    "callback_url": "https://your-webhook.com/callback"  # optional
+}
+
+response = requests.post(url, json=payload, headers=headers)
+result = response.json()
+run_id = result["run_id"]
+```
 
 ---
 
